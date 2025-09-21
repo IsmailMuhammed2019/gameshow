@@ -182,6 +182,29 @@ let GameGateway = class GameGateway {
             return { success: false, error: error.message };
         }
     }
+    async handleClearScores(client) {
+        try {
+            const user = this.connectedUsers.get(client.id);
+            if (!user || user.role !== 'GAME_MASTER') {
+                client.emit('error', { message: 'Only game masters can clear scores' });
+                return { success: false, error: 'Unauthorized' };
+            }
+            const result = await this.gameService.clearAllScores(user.userId);
+            const userDetails = await this.gameService.getUserById(user.userId);
+            this.server.emit('scores_cleared', {
+                message: result.message,
+                clearedCount: result.clearedCount,
+                clearedBy: userDetails.username,
+            });
+            this.broadcastUserList();
+            return { success: true, result };
+        }
+        catch (error) {
+            console.error('Error clearing scores:', error);
+            client.emit('error', { message: error.message });
+            return { success: false, error: error.message };
+        }
+    }
 };
 exports.GameGateway = GameGateway;
 __decorate([
@@ -228,6 +251,13 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleEndGame", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('clear_scores'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleClearScores", null);
 exports.GameGateway = GameGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {

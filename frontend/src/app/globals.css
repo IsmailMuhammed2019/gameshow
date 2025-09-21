@@ -406,11 +406,25 @@
 .screen-green {
   background: linear-gradient(135deg, #22c55e, #16a34a) !important;
   animation: flash-green 2s ease-in-out;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
 }
 
 .screen-red {
   background: linear-gradient(135deg, #ef4444, #dc2626) !important;
   animation: flash-red 2s ease-in-out;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
 }
 
 @keyframes flash-green {

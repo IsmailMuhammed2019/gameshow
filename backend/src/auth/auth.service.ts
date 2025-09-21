@@ -15,7 +15,10 @@ export class AuthService {
     const user = await this.userService.findByUsername(username);
     if (user && await this.userService.validatePassword(password, user.password)) {
       const { password, ...result } = user;
-      return result;
+      return {
+        ...result,
+        score: Number(result.score), // Convert BigInt to number
+      };
     }
     return null;
   }
@@ -35,6 +38,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         uniqueNumber: user.uniqueNumber,
+        score: Number(user.score), // Convert BigInt to number
       },
     };
   }
@@ -42,6 +46,9 @@ export class AuthService {
   async register(createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
     const { password, ...result } = user;
-    return result;
+    return {
+      ...result,
+      score: Number(result.score), // Convert BigInt to number
+    };
   }
 }

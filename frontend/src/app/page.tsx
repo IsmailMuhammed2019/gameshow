@@ -54,10 +54,10 @@ export default function HomePage() {
             />
           </div>
           <h1 className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
-            Millionaire Game
+             FUN & BANTE
           </h1>
           <p className="text-xl text-white/90 drop-shadow">
-            Who Wants to Be a Millionaire
+          "Your go-to space for entertainment, energy, and endless banter."
           </p>
         </div>
 

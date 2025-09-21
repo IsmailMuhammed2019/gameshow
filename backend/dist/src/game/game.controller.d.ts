@@ -59,7 +59,7 @@ export declare class GameController {
         correctAnswer: number;
     }>;
     endGame(sessionId: string, req: any): Promise<any>;
-    getGameSession(sessionId: string): Promise<{
+    getGameSession(sessionId: string): Promise<Omit<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -68,8 +68,23 @@ export declare class GameController {
         currentQuestionIndex: number;
         totalQuestions: number;
         gameMasterId: string;
+    }, "gameMaster"> & {
+        gameMaster: (Omit<{
+            id: string;
+            username: string;
+            email: string;
+            uniqueNumber: string;
+            password: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            isActive: boolean;
+            score: bigint;
+            createdAt: Date;
+            updatedAt: Date;
+        }, "score"> & {
+            score: number;
+        }) | null;
     }>;
-    getActiveGameSessions(): Promise<{
+    getActiveGameSessions(): Promise<(Omit<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -78,5 +93,24 @@ export declare class GameController {
         currentQuestionIndex: number;
         totalQuestions: number;
         gameMasterId: string;
-    }[]>;
+    }, "gameMaster"> & {
+        gameMaster: (Omit<{
+            id: string;
+            username: string;
+            email: string;
+            uniqueNumber: string;
+            password: string;
+            role: import(".prisma/client").$Enums.UserRole;
+            isActive: boolean;
+            score: bigint;
+            createdAt: Date;
+            updatedAt: Date;
+        }, "score"> & {
+            score: number;
+        }) | null;
+    })[]>;
+    clearScores(req: any): Promise<{
+        message: string;
+        clearedCount: number;
+    }>;
 }

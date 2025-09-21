@@ -61,4 +61,9 @@ export class GameController {
   getActiveGameSessions() {
     return this.gameService.getActiveGameSessions();
   }
+
+  @Post('clear-scores')
+  clearScores(@Request() req) {
+    return this.gameService.clearAllScores(req.user.userId);
+  }
 }

@@ -31,16 +31,20 @@ let UserService = class UserService {
         }
         const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
         const uniqueNumber = this.generateUniqueNumber();
-        return this.prisma.user.create({
+        const user = await this.prisma.user.create({
             data: {
                 ...createUserDto,
                 password: hashedPassword,
                 uniqueNumber,
             },
         });
+        return {
+            ...user,
+            score: Number(user.score),
+        };
     }
     async findAll() {
-        return this.prisma.user.findMany({
+        const users = await this.prisma.user.findMany({
             select: {
                 id: true,
                 username: true,
@@ -52,6 +56,10 @@ let UserService = class UserService {
                 createdAt: true,
             },
         });
+        return users.map(user => ({
+            ...user,
+            score: Number(user.score),
+        }));
     }
     async findOne(id) {
         const user = await this.prisma.user.findUnique({
@@ -70,13 +78,30 @@ let UserService = class UserService {
         if (!user) {
             throw new common_1.NotFoundException('User not found');
         }
-        return user;
+        return {
+            ...user,
+            score: Number(user.score),
+        };
     }
     async findByUsername(username) {
-        return this.prisma.user.findUnique({ where: { username } });
+        const user = await this.prisma.user.findUnique({ where: { username } });
+        if (user) {
+            return {
+                ...user,
+                score: Number(user.score),
+            };
+        }
+        return null;
     }
     async findByUniqueNumber(uniqueNumber) {
-        return this.prisma.user.findUnique({ where: { uniqueNumber } });
+        const user = await this.prisma.user.findUnique({ where: { uniqueNumber } });
+        if (user) {
+            return {
+                ...user,
+                score: Number(user.score),
+            };
+        }
+        return null;
     }
     async update(id, updateUserDto) {
         await this.findOne(id);
@@ -84,10 +109,14 @@ let UserService = class UserService {
         if (updateData.password) {
             updateData.password = await bcrypt.hash(updateData.password, 10);
         }
-        return this.prisma.user.update({
+        const updatedUser = await this.prisma.user.update({
             where: { id },
             data: updateData,
         });
+        return {
+            ...updatedUser,
+            score: Number(updatedUser.score),
+        };
     }
     async remove(id) {
         await this.findOne(id);

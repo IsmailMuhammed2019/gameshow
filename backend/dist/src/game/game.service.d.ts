@@ -1,6 +1,12 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { Question, GameSession, User } from '@prisma/client';
+type UserWithNumberScore = Omit<User, 'score'> & {
+    score: number;
+};
+type GameSessionWithNumberScore = Omit<GameSession, 'gameMaster'> & {
+    gameMaster: UserWithNumberScore | null;
+};
 export declare class GameService {
     private prisma;
     constructor(prisma: PrismaService);
@@ -14,7 +20,12 @@ export declare class GameService {
         correctAnswer: number;
     }>;
     endGame(gameSessionId: string, gameMasterId: string): Promise<any>;
-    getUserById(userId: string): Promise<User>;
-    getGameSession(gameSessionId: string): Promise<GameSession>;
-    getActiveGameSessions(): Promise<GameSession[]>;
+    getUserById(userId: string): Promise<UserWithNumberScore>;
+    getGameSession(gameSessionId: string): Promise<GameSessionWithNumberScore>;
+    getActiveGameSessions(): Promise<GameSessionWithNumberScore[]>;
+    clearAllScores(gameMasterId: string): Promise<{
+        message: string;
+        clearedCount: number;
+    }>;
 }
+export {};

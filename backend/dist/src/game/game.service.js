@@ -143,7 +143,10 @@ let GameService = class GameService {
         if (!user) {
             throw new common_1.NotFoundException('User not found');
         }
-        return user;
+        return {
+            ...user,
+            score: Number(user.score),
+        };
     }
     async getGameSession(gameSessionId) {
         const gameSession = await this.prisma.gameSession.findUnique({
@@ -153,13 +156,49 @@ let GameService = class GameService {
         if (!gameSession) {
             throw new common_1.NotFoundException('Game session not found');
         }
-        return gameSession;
+        const result = {
+            ...gameSession,
+            gameMaster: gameSession.gameMaster ? {
+                ...gameSession.gameMaster,
+                score: Number(gameSession.gameMaster.score),
+            } : null,
+        };
+        return result;
     }
     async getActiveGameSessions() {
-        return this.prisma.gameSession.findMany({
+        const gameSessions = await this.prisma.gameSession.findMany({
             where: { status: client_1.GameStatus.ACTIVE },
             include: { currentQuestion: true, gameMaster: true },
         });
+        return gameSessions.map(session => ({
+            ...session,
+            gameMaster: session.gameMaster ? {
+                ...session.gameMaster,
+                score: Number(session.gameMaster.score),
+            } : null,
+        }));
+    }
+    async clearAllScores(gameMasterId) {
+        const gameMaster = await this.prisma.user.findUnique({
+            where: { id: gameMasterId },
+        });
+        if (!gameMaster || gameMaster.role !== 'GAME_MASTER') {
+            throw new common_1.ForbiddenException('Only game masters can clear scores');
+        }
+        const result = await this.prisma.user.updateMany({
+            where: {
+                role: {
+                    in: ['PARTICIPANT', 'AUDIENCE'],
+                },
+            },
+            data: {
+                score: 0,
+            },
+        });
+        return {
+            message: 'All scores cleared successfully',
+            clearedCount: result.count,
+        };
     }
 };
 exports.GameService = GameService;

@@ -252,4 +252,38 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { success: false, error: error.message };
     }
   }
+
+  @SubscribeMessage('clear_scores')
+  async handleClearScores(@ConnectedSocket() client: Socket) {
+    try {
+      // Get the user from the connected users map
+      const user = this.connectedUsers.get(client.id);
+      if (!user || user.role !== 'GAME_MASTER') {
+        client.emit('error', { message: 'Only game masters can clear scores' });
+        return { success: false, error: 'Unauthorized' };
+      }
+
+      // Clear all scores using the game service
+      const result = await this.gameService.clearAllScores(user.userId);
+      
+      // Get user details for the broadcast
+      const userDetails = await this.gameService.getUserById(user.userId);
+      
+      // Broadcast to all connected users that scores have been cleared
+      this.server.emit('scores_cleared', {
+        message: result.message,
+        clearedCount: result.clearedCount,
+        clearedBy: userDetails.username,
+      });
+
+      // Update the user list to reflect the cleared scores
+      this.broadcastUserList();
+
+      return { success: true, result };
+    } catch (error) {
+      console.error('Error clearing scores:', error);
+      client.emit('error', { message: error.message });
+      return { success: false, error: error.message };
+    }
+  }
 }

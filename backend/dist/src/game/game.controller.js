@@ -49,6 +49,9 @@ let GameController = class GameController {
     getActiveGameSessions() {
         return this.gameService.getActiveGameSessions();
     }
+    clearScores(req) {
+        return this.gameService.clearAllScores(req.user.userId);
+    }
 };
 exports.GameController = GameController;
 __decorate([
@@ -114,6 +117,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], GameController.prototype, "getActiveGameSessions", null);
+__decorate([
+    (0, common_1.Post)('clear-scores'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], GameController.prototype, "clearScores", null);
 exports.GameController = GameController = __decorate([
     (0, common_1.Controller)('game'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

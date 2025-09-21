@@ -1,8 +1,16 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
 import { Question, GameSession, Answer, User, GameStatus } from '@prisma/client';
+
+// Custom type with score as number instead of bigint
+type UserWithNumberScore = Omit<User, 'score'> & { score: number };
+
+// Custom type for GameSession with gameMaster having number score
+type GameSessionWithNumberScore = Omit<GameSession, 'gameMaster'> & {
+  gameMaster: UserWithNumberScore | null;
+};
 
 @Injectable()
 export class GameService {
@@ -166,15 +174,18 @@ export class GameService {
     };
   }
 
-  async getUserById(userId: string): Promise<User> {
+  async getUserById(userId: string): Promise<UserWithNumberScore> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    return user;
+    return {
+      ...user,
+      score: Number(user.score), // Convert BigInt to number
+    };
   }
 
-  async getGameSession(gameSessionId: string): Promise<GameSession> {
+  async getGameSession(gameSessionId: string): Promise<GameSessionWithNumberScore> {
     const gameSession = await this.prisma.gameSession.findUnique({
       where: { id: gameSessionId },
       include: { currentQuestion: true, gameMaster: true },
@@ -184,13 +195,59 @@ export class GameService {
       throw new NotFoundException('Game session not found');
     }
 
-    return gameSession;
+    // Convert BigInt score to number in gameMaster
+    const result: GameSessionWithNumberScore = {
+      ...gameSession,
+      gameMaster: gameSession.gameMaster ? {
+        ...gameSession.gameMaster,
+        score: Number(gameSession.gameMaster.score),
+      } : null,
+    };
+
+    return result;
   }
 
-  async getActiveGameSessions(): Promise<GameSession[]> {
-    return this.prisma.gameSession.findMany({
+  async getActiveGameSessions(): Promise<GameSessionWithNumberScore[]> {
+    const gameSessions = await this.prisma.gameSession.findMany({
       where: { status: GameStatus.ACTIVE },
       include: { currentQuestion: true, gameMaster: true },
     });
+
+    // Convert BigInt scores to numbers in gameMaster
+    return gameSessions.map(session => ({
+      ...session,
+      gameMaster: session.gameMaster ? {
+        ...session.gameMaster,
+        score: Number(session.gameMaster.score),
+      } : null,
+    })) as GameSessionWithNumberScore[];
+  }
+
+  async clearAllScores(gameMasterId: string): Promise<{ message: string; clearedCount: number }> {
+    // Verify the user is a game master
+    const gameMaster = await this.prisma.user.findUnique({
+      where: { id: gameMasterId },
+    });
+
+    if (!gameMaster || gameMaster.role !== 'GAME_MASTER') {
+      throw new ForbiddenException('Only game masters can clear scores');
+    }
+
+    // Reset all user scores to 0
+    const result = await this.prisma.user.updateMany({
+      where: {
+        role: {
+          in: ['PARTICIPANT', 'AUDIENCE'],
+        },
+      },
+      data: {
+        score: 0,
+      },
+    });
+
+    return {
+      message: 'All scores cleared successfully',
+      clearedCount: result.count,
+    };
   }
 }

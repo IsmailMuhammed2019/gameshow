@@ -84,4 +84,16 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         error: any;
         results?: undefined;
     }>;
+    handleClearScores(client: Socket): Promise<{
+        success: boolean;
+        result: {
+            message: string;
+            clearedCount: number;
+        };
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        result?: undefined;
+    }>;
 }

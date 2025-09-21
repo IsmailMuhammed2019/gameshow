@@ -7,7 +7,7 @@ import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Play, Pause, Square, Users, Trophy, Settings, LogOut } from 'lucide-react';
+import { Play, Pause, Square, Users, Trophy, Settings, LogOut, RotateCcw } from 'lucide-react';
 import io from 'socket.io-client';
 
 export default function GameMasterPage() {
@@ -89,6 +89,30 @@ export default function GameMasterPage() {
         gameSessionId: currentGameSession.id,
         gameMasterId: currentUser?.id,
       });
+    }
+  }, []);
+
+  const clearScores = useCallback(async () => {
+    const currentSocket = socketRef.current;
+    
+    if (currentSocket) {
+      try {
+        const response = await fetch('/api/game/clear-scores', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        
+        if (response.ok) {
+          // Emit clear scores event to all connected users
+          currentSocket.emit('clear_scores');
+          console.log('Scores cleared successfully');
+        }
+      } catch (error) {
+        console.error('Error clearing scores:', error);
+      }
     }
   }, []);
 
@@ -189,6 +213,12 @@ export default function GameMasterPage() {
       newSocket.on('answer_result', (result: any) => {
         console.log('Answer result received in Game Master:', result);
         // This helps track when participants answer
+      });
+
+      newSocket.on('scores_cleared', (data: any) => {
+        console.log('Scores cleared:', data);
+        // Show notification or update UI as needed
+        alert(`Scores cleared! ${data.clearedCount} players reset to 0 points.`);
       });
 
       return newSocket;
@@ -304,6 +334,15 @@ export default function GameMasterPage() {
             >
               <Square className="w-6 h-6 mr-3" />
               🏁 END GAME
+            </Button>
+            <Button
+              variant="outline"
+              onClick={clearScores}
+              disabled={!isConnected}
+              className="w-full h-16 text-lg font-bold bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white border-0 shadow-lg"
+            >
+              <RotateCcw className="w-6 h-6 mr-3" />
+              🔄 CLEAR SCORES
             </Button>
           </CardContent>
         </Card>
@@ -442,6 +481,43 @@ export default function GameMasterPage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Winners */}
+        <Card className="game-show-card">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl font-bold text-gray-800">
+              🏆 RECENT WINNERS
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              Latest correct answers
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {winners.length > 0 ? (
+              <div className="space-y-3">
+                {winners.slice(-5).map((winner, index) => (
+                  <div key={index} className="player-item p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">
+                        🏆
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-800">{winner.username}</p>
+                        <p className="text-sm text-orange-600">#{winner.uniqueNumber}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-2">🎯</div>
+                <p className="text-gray-500 font-medium">No winners yet</p>
+                <p className="text-sm text-gray-400">Players will appear here when they answer correctly!</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

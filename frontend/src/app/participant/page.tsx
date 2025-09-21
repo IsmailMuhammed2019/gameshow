@@ -14,7 +14,7 @@ import SoundEffects from '@/components/SoundEffects';
 
 export default function ParticipantPage() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, setUser } = useAuthStore();
   const { 
     gameSession, 
     currentQuestion, 
@@ -35,6 +35,7 @@ export default function ParticipantPage() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [screenColor, setScreenColor] = useState('');
+  const [showScreenOverlay, setShowScreenOverlay] = useState(false);
   const [showCelebration, setShowCelebration] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -94,16 +95,19 @@ export default function ParticipantPage() {
       // Trigger celebration animation
       setShowCelebration(result.isCorrect);
       
-      // Set screen color based on result
+      // Set full screen overlay based on result
       if (result.isCorrect) {
         setScreenColor('screen-green');
+        setShowScreenOverlay(true);
       } else {
         setScreenColor('screen-red');
+        setShowScreenOverlay(true);
       }
       
-      // Reset screen color after animation
+      // Reset screen overlay after animation
       setTimeout(() => {
         setScreenColor('');
+        setShowScreenOverlay(false);
       }, 2000);
     });
 
@@ -123,6 +127,17 @@ export default function ParticipantPage() {
       // This helps track connected users
     });
 
+    newSocket.on('scores_cleared', (data: any) => {
+      console.log('Scores cleared:', data);
+      // Update user score to 0
+      setUser({
+        ...user,
+        score: 0,
+      });
+      // Show notification
+      alert(`Scores have been cleared by the Game Master! Your score is now 0.`);
+    });
+
     newSocket.on('error', (error: any) => {
       console.error('WebSocket error:', error);
     });
@@ -130,7 +145,7 @@ export default function ParticipantPage() {
     return () => {
       newSocket.close();
     };
-  }, [user?.id, user?.role]);
+  }, [user?.id, user?.role, setUser]);
 
   const submitAnswer = async (optionIndex: number) => {
     console.log('Submit answer clicked:', {
@@ -427,6 +442,11 @@ export default function ParticipantPage() {
 
       {/* Sound Effects */}
       <SoundEffects isCorrect={showCelebration} />
+
+      {/* Full Screen Color Overlay */}
+      {showScreenOverlay && (
+        <div className={screenColor}></div>
+      )}
     </div>
   );
 }

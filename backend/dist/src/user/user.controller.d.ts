@@ -4,7 +4,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export declare class UserController {
     private readonly userService;
     constructor(userService: UserService);
-    create(createUserDto: CreateUserDto): Promise<{
+    create(createUserDto: CreateUserDto): Promise<Omit<{
         id: string;
         username: string;
         email: string;
@@ -15,8 +15,10 @@ export declare class UserController {
         score: bigint;
         createdAt: Date;
         updatedAt: Date;
+    }, "score"> & {
+        score: number;
     }>;
-    findAll(): Promise<Partial<{
+    findAll(): Promise<Partial<Omit<{
         id: string;
         username: string;
         email: string;
@@ -27,8 +29,10 @@ export declare class UserController {
         score: bigint;
         createdAt: Date;
         updatedAt: Date;
+    }, "score"> & {
+        score: number;
     }>[]>;
-    findOne(id: string): Promise<Partial<{
+    findOne(id: string): Promise<Partial<Omit<{
         id: string;
         username: string;
         email: string;
@@ -39,8 +43,10 @@ export declare class UserController {
         score: bigint;
         createdAt: Date;
         updatedAt: Date;
+    }, "score"> & {
+        score: number;
     }>>;
-    update(id: string, updateUserDto: UpdateUserDto): Promise<{
+    update(id: string, updateUserDto: UpdateUserDto): Promise<Omit<{
         id: string;
         username: string;
         email: string;
@@ -51,6 +57,8 @@ export declare class UserController {
         score: bigint;
         createdAt: Date;
         updatedAt: Date;
+    }, "score"> & {
+        score: number;
     }>;
     remove(id: string): Promise<void>;
 }

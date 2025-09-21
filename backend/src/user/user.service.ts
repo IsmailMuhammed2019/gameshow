@@ -5,11 +5,14 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserRole } from '@prisma/client';
 
+// Custom type with score as number instead of bigint
+type UserWithNumberScore = Omit<User, 'score'> & { score: number };
+
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<UserWithNumberScore> {
     // Check if username or email already exists
     const existingUser = await this.prisma.user.findFirst({
       where: {
@@ -30,17 +33,22 @@ export class UserService {
     // Generate unique number
     const uniqueNumber = this.generateUniqueNumber();
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         ...createUserDto,
         password: hashedPassword,
         uniqueNumber,
       },
     });
+
+    return {
+      ...user,
+      score: Number(user.score), // Convert BigInt to number
+    };
   }
 
-  async findAll(): Promise<Partial<User>[]> {
-    return this.prisma.user.findMany({
+  async findAll(): Promise<Partial<UserWithNumberScore>[]> {
+    const users = await this.prisma.user.findMany({
       select: {
         id: true,
         username: true,
@@ -52,9 +60,15 @@ export class UserService {
         createdAt: true,
       },
     });
+    
+    // Convert BigInt scores to numbers
+    return users.map(user => ({
+      ...user,
+      score: Number(user.score),
+    }));
   }
 
-  async findOne(id: string): Promise<Partial<User>> {
+  async findOne(id: string): Promise<Partial<UserWithNumberScore>> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -73,18 +87,35 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    return {
+      ...user,
+      score: Number(user.score), // Convert BigInt to number
+    };
   }
 
-  async findByUsername(username: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { username } });
+  async findByUsername(username: string): Promise<UserWithNumberScore | null> {
+    const user = await this.prisma.user.findUnique({ where: { username } });
+    if (user) {
+      return {
+        ...user,
+        score: Number(user.score), // Convert BigInt to number
+      };
+    }
+    return null;
   }
 
-  async findByUniqueNumber(uniqueNumber: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { uniqueNumber } });
+  async findByUniqueNumber(uniqueNumber: string): Promise<UserWithNumberScore | null> {
+    const user = await this.prisma.user.findUnique({ where: { uniqueNumber } });
+    if (user) {
+      return {
+        ...user,
+        score: Number(user.score), // Convert BigInt to number
+      };
+    }
+    return null;
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserWithNumberScore> {
     await this.findOne(id);
     
     const updateData: any = { ...updateUserDto };
@@ -92,10 +123,15 @@ export class UserService {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
-    return this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id },
       data: updateData,
     });
+
+    return {
+      ...updatedUser,
+      score: Number(updatedUser.score), // Convert BigInt to number
+    };
   }
 
   async remove(id: string): Promise<void> {

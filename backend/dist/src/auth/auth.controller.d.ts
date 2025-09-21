@@ -5,13 +5,13 @@ export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
     register(createUserDto: CreateUserDto): Promise<{
+        score: number;
         id: string;
         username: string;
         email: string;
         uniqueNumber: string;
         role: import(".prisma/client").$Enums.UserRole;
         isActive: boolean;
-        score: bigint;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -23,6 +23,7 @@ export declare class AuthController {
             email: any;
             role: any;
             uniqueNumber: any;
+            score: number;
         };
     }>;
     getProfile(req: any): any;
