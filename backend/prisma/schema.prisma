@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PARTICIPANT
+  AUDIENCE
+  GAME_MASTER
+}
+
+enum GameStatus {
+  WAITING
+  ACTIVE
+  PAUSED
+  FINISHED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  password     String
+  role         UserRole @default(AUDIENCE)
+  uniqueNumber String   @unique
+  isActive     Boolean  @default(true)
+  score        BigInt   @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  gameSessions GameSession[] @relation("GameMaster")
+  answers      Answer[]
+
+  @@map("users")
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  question      String
+  options       String[]
+  correctAnswer Int
+  difficulty    Int      @default(1)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  gameSessions GameSession[]
+  answers      Answer[]
+
+  @@map("questions")
+}
+
+model GameSession {
+  id                   String     @id @default(cuid())
+  status               GameStatus @default(WAITING)
+  currentQuestionId    String?
+  currentQuestionIndex Int        @default(0)
+  totalQuestions       Int        @default(0)
+  gameMasterId         String
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  // Relations
+  gameMaster     User      @relation("GameMaster", fields: [gameMasterId], references: [id])
+  currentQuestion Question? @relation(fields: [currentQuestionId], references: [id])
+  answers        Answer[]
+
+  @@map("game_sessions")
+}
+
+model Answer {
+  id            String   @id @default(cuid())
+  userId        String
+  questionId    String
+  gameSessionId String
+  selectedOption Int
+  isCorrect     Boolean  @default(false)
+  responseTime  Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id])
+  question    Question    @relation(fields: [questionId], references: [id])
+  gameSession GameSession @relation(fields: [gameSessionId], references: [id])
+
+  @@unique([userId, questionId, gameSessionId])
+  @@map("answers")
+}

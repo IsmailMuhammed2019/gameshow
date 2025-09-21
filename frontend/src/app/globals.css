@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 24 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 210 40% 98%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 98%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 98%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 24 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 24 100% 50%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 24 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom game styles */
+.game-container {
+  background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #14b8a6 100%);
+  min-height: 100vh;
+}
+
+.question-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.option-button {
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+
+.option-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.option-button.correct {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  animation: pulse-green 2s infinite;
+}
+
+.option-button.incorrect {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  animation: pulse-red 2s infinite;
+}
+
+.winner-modal {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border: 3px solid #f97316;
+  box-shadow: 0 20px 40px rgba(249, 115, 22, 0.3);
+}
+
+.participant-screen {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: white;
+}
+
+.audience-screen {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: white;
+}
+
+.game-master-screen {
+  background: linear-gradient(135deg, #7c2d12, #991b1b);
+  color: white;
+}
+
+/* Screen color transitions for answer feedback */
+.screen-green {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  animation: flash-green 2s ease-in-out;
+}
+
+.screen-red {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  animation: flash-red 2s ease-in-out;
+}
+
+@keyframes flash-green {
+  0% { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  50% { background: linear-gradient(135deg, #4ade80, #22c55e); }
+  100% { background: linear-gradient(135deg, #22c55e, #16a34a); }
+}
+
+@keyframes flash-red {
+  0% { background: linear-gradient(135deg, #ef4444, #dc2626); }
+  50% { background: linear-gradient(135deg, #f87171, #ef4444); }
+  100% { background: linear-gradient(135deg, #ef4444, #dc2626); }
+}
+
+@keyframes pulse-green {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}

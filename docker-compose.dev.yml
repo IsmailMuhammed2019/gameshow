@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: millionaire-postgres-dev
+    environment:
+      POSTGRES_DB: millionaire_game_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - millionaire-dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (Development)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: millionaire-backend-dev
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/millionaire_game_dev?schema=public
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-development
+      PORT: 3001
+      NODE_ENV: development
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - millionaire-dev-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: >
+      sh -c "
+        npx prisma migrate dev --name init &&
+        npx prisma db seed &&
+        npm run start:dev
+      "
+
+  # Frontend (Development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: millionaire-frontend-dev
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_APP_NAME: Millionaire Game Dev
+      NEXT_PUBLIC_APP_VERSION: 1.0.0-dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - millionaire-dev-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  millionaire-dev-network:
+    driver: bridge
