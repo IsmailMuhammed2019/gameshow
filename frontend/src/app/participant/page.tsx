@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LogOut, Trophy, Users } from 'lucide-react';
 import io from 'socket.io-client';
+import Celebration from '@/components/Celebration';
+import SoundEffects from '@/components/SoundEffects';
 
 export default function ParticipantPage() {
   const router = useRouter();
@@ -33,6 +35,7 @@ export default function ParticipantPage() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [screenColor, setScreenColor] = useState('');
+  const [showCelebration, setShowCelebration] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!user || user.role !== 'PARTICIPANT') {
@@ -87,6 +90,9 @@ export default function ParticipantPage() {
           score: Number(result.updatedUser.score),
         });
       }
+      
+      // Trigger celebration animation
+      setShowCelebration(result.isCorrect);
       
       // Set screen color based on result
       if (result.isCorrect) {
@@ -240,13 +246,25 @@ export default function ParticipantPage() {
                   </div>
                   
                   {answerResult && (
-                    <div className="mt-6 p-4 rounded-lg bg-gray-100">
-                      <p className={`font-medium ${answerResult.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                        {answerResult.isCorrect ? '✅ Correct!' : '❌ Incorrect!'}
+                    <div className={`mt-6 p-6 rounded-lg text-center ${
+                      answerResult.isCorrect 
+                        ? 'bg-green-100 border-2 border-green-300' 
+                        : 'bg-red-100 border-2 border-red-300'
+                    }`}>
+                      <div className="text-4xl mb-2">
+                        {answerResult.isCorrect ? '🎉' : '😢'}
+                      </div>
+                      <p className={`text-xl font-bold ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                        {answerResult.isCorrect ? 'Excellent! You got it right!' : 'Oops! That\'s not correct'}
                       </p>
                       {!answerResult.isCorrect && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          The correct answer was: {String.fromCharCode(65 + answerResult.correctAnswer)}
+                        <p className="text-sm text-gray-600 mt-2">
+                          The correct answer was: <span className="font-bold">{String.fromCharCode(65 + answerResult.correctAnswer)}</span>
+                        </p>
+                      )}
+                      {answerResult.isCorrect && (
+                        <p className="text-sm text-green-600 mt-2 font-medium">
+                          +1 Point! Keep it up! 🚀
                         </p>
                       )}
                     </div>
@@ -348,6 +366,15 @@ export default function ParticipantPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Celebration Animation */}
+      <Celebration 
+        isCorrect={showCelebration} 
+        onComplete={() => setShowCelebration(null)}
+      />
+
+      {/* Sound Effects */}
+      <SoundEffects isCorrect={showCelebration} />
     </div>
   );
 }
