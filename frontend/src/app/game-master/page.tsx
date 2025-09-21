@@ -7,7 +7,7 @@ import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Play, Pause, Square, Users, Trophy, Settings } from 'lucide-react';
+import { Play, Pause, Square, Users, Trophy, Settings, LogOut } from 'lucide-react';
 import io from 'socket.io-client';
 
 export default function GameMasterPage() {
@@ -213,65 +213,86 @@ export default function GameMasterPage() {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <img
-            src="/bantefun.jpg"
-            alt="Logo"
-            className="w-12 h-12 rounded-full border-2 border-white"
-          />
-          <div>
-            <h1 className="text-2xl font-bold text-white">Game Master</h1>
-            <p className="text-white/80">Welcome, {user.username}</p>
+    <div className="min-h-screen game-master-screen p-4">
+      {/* TV Show Header */}
+      <div className="game-show-header p-6 mb-8 rounded-b-3xl">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-6">
+            <div className="relative">
+              <img
+                src="/bantefun.jpg"
+                alt="Logo"
+                className="w-16 h-16 rounded-full border-4 border-orange-500 shadow-2xl"
+              />
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
+                🎮 GAME MASTER CONTROL
+              </h1>
+              <p className="text-xl text-orange-300 font-medium">
+                Welcome, {user.username} • #{user.uniqueNumber}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-white text-sm">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
-          <Button variant="outline" onClick={handleLogout} className="ml-4">
-            Logout
-          </Button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 bg-black/30 px-4 py-2 rounded-full">
+              <div className={`w-4 h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="text-white font-medium">
+                {isConnected ? 'LIVE' : 'OFFLINE'}
+              </span>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleLogout} 
+              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Exit Studio
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Game Controls */}
-        <Card className="game-master-screen">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Settings className="w-5 h-5 mr-2" />
-              Game Controls
+        <Card className="control-panel">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-white mb-2">
+              🎛️ CONTROL PANEL
             </CardTitle>
+            <CardDescription className="text-orange-300">
+              Master the game flow
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 gap-4">
               <Button
                 variant="orange"
                 onClick={startGame}
                 disabled={!isConnected || gameSession?.status === 'ACTIVE'}
-                className="w-full"
+                className="w-full h-16 text-lg font-bold bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-lg"
               >
-                <Play className="w-4 h-4 mr-2" />
-                Start Game
+                <Play className="w-6 h-6 mr-3" />
+                🚀 START GAME
               </Button>
               <Button
                 variant="teal-blue"
                 onClick={nextQuestion}
                 disabled={!isConnected || !gameSession || gameSession.status !== 'ACTIVE' || isLoadingQuestion}
-                className="w-full"
+                className="w-full h-16 text-lg font-bold bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 shadow-lg"
                 title={`Connected: ${isConnected}, GameSession: ${!!gameSession}, Status: ${gameSession?.status}, Loading: ${isLoadingQuestion}`}
               >
                 {isLoadingQuestion ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Loading...
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                    LOADING...
                   </>
                 ) : (
-                  'Next Question'
+                  <>
+                    <Settings className="w-6 h-6 mr-3" />
+                    📝 NEXT QUESTION
+                  </>
                 )}
               </Button>
             </div>
@@ -279,91 +300,143 @@ export default function GameMasterPage() {
               variant="dark-red"
               onClick={endGame}
               disabled={!isConnected || !gameSession}
-              className="w-full"
+              className="w-full h-16 text-lg font-bold bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 shadow-lg"
             >
-              <Square className="w-4 h-4 mr-2" />
-              End Game
+              <Square className="w-6 h-6 mr-3" />
+              🏁 END GAME
             </Button>
           </CardContent>
         </Card>
 
         {/* Current Question */}
-        <Card className="question-card">
-          <CardHeader>
-            <CardTitle className="text-orange-600">Current Question</CardTitle>
+        <Card className="question-display">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-white mb-2">
+              📺 LIVE QUESTION
+            </CardTitle>
+            <CardDescription className="text-orange-300">
+              Question {gameSession?.currentQuestionIndex || 0}
+            </CardDescription>
           </CardHeader>
-            <CardContent>
-              {isLoadingQuestion ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
-                  <p className="text-gray-500">Loading question...</p>
+          <CardContent className="relative z-10">
+            {isLoadingQuestion ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-6"></div>
+                <p className="text-xl text-orange-300 font-medium">Loading question...</p>
+              </div>
+            ) : currentQuestion ? (
+              <div>
+                <div className="bg-black/30 p-6 rounded-xl mb-6">
+                  <p className="text-xl font-bold text-white leading-relaxed">
+                    {currentQuestion.question}
+                  </p>
                 </div>
-              ) : currentQuestion ? (
-                <div>
-                  <p className="text-lg font-medium mb-4">{currentQuestion.question}</p>
-                  <div className="space-y-2">
-                    {currentQuestion.options.map((option, index) => (
-                      <div 
-                        key={index}
-                        className={`p-3 rounded-lg border-2 ${
-                          index === currentQuestion.correctAnswer 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <span className="font-medium text-orange-600">
-                          {String.fromCharCode(65 + index)}.
-                        </span>{' '}
-                        {option}
-                      </div>
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentQuestion.options.map((option, index) => (
+                    <div 
+                      key={index}
+                      className={`p-4 rounded-xl border-2 transition-all duration-300 ${
+                        index === currentQuestion.correctAnswer 
+                          ? 'border-green-400 bg-green-500/20 text-green-300' 
+                          : 'border-orange-400/50 bg-orange-500/10 text-orange-200'
+                      }`}
+                    >
+                      <span className="font-bold text-2xl text-orange-400 mr-3">
+                        {String.fromCharCode(65 + index)}
+                      </span>
+                      <span className="text-lg font-medium">{option}</span>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">
-                  No question active. Start the game to begin!
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🎮</div>
+                <p className="text-xl text-orange-300 font-medium">
+                  Ready to start the game!
                 </p>
-              )}
-            </CardContent>
+                <p className="text-orange-400 mt-2">
+                  Click "START GAME" to begin
+                </p>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* Participants & Audience */}
-        <Card className="question-card">
-          <CardHeader>
-            <CardTitle className="text-orange-600 flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Players
+        <Card className="player-list">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-gray-800 mb-2">
+              👥 LIVE AUDIENCE
             </CardTitle>
+            <CardDescription className="text-gray-600">
+              {participants.length + audience.length} total viewers
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <h4 className="font-medium text-orange-600 mb-2">Participants ({participants.length})</h4>
-                <div className="space-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-bold text-orange-600 flex items-center">
+                    🎮 PLAYERS ({participants.length})
+                  </h4>
+                  <div className="bg-orange-100 px-3 py-1 rounded-full">
+                    <span className="text-sm font-bold text-orange-700">ACTIVE</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
                   {participants.map((participant) => (
-                    <div key={participant.id} className="flex justify-between items-center p-2 bg-orange-50 rounded">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{participant.username}</span>
-                      <span className="text-xs text-orange-600">#{participant.uniqueNumber}</span>
+                    <div key={participant.id} className="player-item p-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">
+                            {participant.username.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-bold text-gray-800">{participant.username}</span>
+                            <p className="text-sm text-orange-600">#{participant.uniqueNumber}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-orange-600">
+                            {participant.score || 0}
+                          </div>
+                          <p className="text-xs text-gray-500">POINTS</p>
+                        </div>
                       </div>
-                      <span className="text-sm font-bold text-orange-700">
-                        Score: {participant.score || 0}
-                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h4 className="font-medium text-teal-blue-600 mb-2">Audience ({audience.length})</h4>
-                <div className="space-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-bold text-blue-600 flex items-center">
+                    👀 SPECTATORS ({audience.length})
+                  </h4>
+                  <div className="bg-blue-100 px-3 py-1 rounded-full">
+                    <span className="text-sm font-bold text-blue-700">WATCHING</span>
+                  </div>
+                </div>
+                <div className="space-y-3">
                   {audience.map((member) => (
-                    <div key={member.id} className="flex justify-between items-center p-2 bg-teal-blue-50 rounded">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{member.username}</span>
-                      <span className="text-xs text-teal-blue-600">#{member.uniqueNumber}</span>
+                    <div key={member.id} className="player-item p-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                            {member.username.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-bold text-gray-800">{member.username}</span>
+                            <p className="text-sm text-blue-600">#{member.uniqueNumber}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-blue-600">
+                            SPECTATOR
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs text-teal-blue-500">Audience</span>
                     </div>
                   ))}
                 </div>

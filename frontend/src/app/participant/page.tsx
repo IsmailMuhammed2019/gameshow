@@ -172,50 +172,71 @@ export default function ParticipantPage() {
 
   return (
     <div className={`min-h-screen p-4 transition-colors duration-500 ${screenColor || 'participant-screen'}`}>
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <img 
-            src="/bantefun.jpg" 
-            alt="Logo" 
-            className="w-12 h-12 rounded-full border-2 border-white"
-          />
-          <div>
-            <h1 className="text-2xl font-bold text-white">Participant</h1>
-            <p className="text-white/80">Welcome, {user.username} (#{user.uniqueNumber})</p>
+      {/* TV Show Header */}
+      <div className="game-show-header p-6 mb-8 rounded-b-3xl">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-6">
+            <div className="relative">
+              <img 
+                src="/bantefun.jpg" 
+                alt="Logo" 
+                className="w-16 h-16 rounded-full border-4 border-orange-500 shadow-2xl"
+              />
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
+                🎮 PLAYER STATION
+              </h1>
+              <p className="text-xl text-orange-300 font-medium">
+                Welcome, {user.username} • #{user.uniqueNumber}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-white text-sm">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
-          <Button variant="outline" onClick={handleLogout} className="ml-4">
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3 bg-black/30 px-4 py-2 rounded-full">
+              <div className={`w-4 h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="text-white font-medium">
+                {isConnected ? 'LIVE' : 'OFFLINE'}
+              </span>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleLogout} 
+              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Exit Game
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Current Question */}
         <div className="lg:col-span-2">
-          <Card className="question-card">
-            <CardHeader>
-              <CardTitle className="text-orange-600">Current Question</CardTitle>
+          <Card className="question-display">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-white mb-2">
+                📺 YOUR QUESTION
+              </CardTitle>
               {gameSession && (
-                <CardDescription>
-                  Question {gameSession.currentQuestionIndex} of {gameSession.totalQuestions || '∞'}
+                <CardDescription className="text-orange-300">
+                  Question {gameSession.currentQuestionIndex} • Difficulty: {currentQuestion?.difficulty || 'N/A'}
                 </CardDescription>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative z-10">
               {currentQuestion ? (
                 <div>
-                  <p className="text-xl font-medium mb-6">{currentQuestion.question}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-black/30 p-8 rounded-xl mb-8">
+                    <p className="text-2xl font-bold text-white leading-relaxed text-center">
+                      {currentQuestion.question}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {currentQuestion.options.map((option, index) => {
-                      let buttonClass = 'option-button';
+                      let buttonClass = 'answer-option';
                       let isDisabled = isAnswering || answerResult !== undefined;
                       
                       if (answerResult) {
@@ -230,16 +251,16 @@ export default function ParticipantPage() {
                         <Button
                           key={index}
                           variant="outline"
-                          className={`${buttonClass} h-16 text-left justify-start p-4 ${
-                            selectedOption === index ? 'ring-2 ring-orange-500' : ''
+                          className={`${buttonClass} h-20 text-left justify-start p-6 text-lg font-medium ${
+                            selectedOption === index ? 'ring-4 ring-orange-500 scale-105' : ''
                           }`}
                           onClick={() => submitAnswer(index)}
                           disabled={isDisabled}
                         >
-                          <span className="font-bold text-orange-600 mr-3">
-                            {String.fromCharCode(65 + index)}.
+                          <span className="font-bold text-3xl text-orange-600 mr-4">
+                            {String.fromCharCode(65 + index)}
                           </span>
-                          {option}
+                          <span className="text-lg">{option}</span>
                         </Button>
                       );
                     })}
@@ -283,53 +304,84 @@ export default function ParticipantPage() {
 
         {/* Game Info */}
         <div className="space-y-6">
-          <Card className="question-card">
+          <Card className="score-display">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-white mb-2">
+                🏆 YOUR SCORE
+              </CardTitle>
+              <CardDescription className="text-orange-200">
+                Current points earned
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="text-6xl font-bold text-white mb-4">
+                {user.score || 0}
+              </div>
+              <p className="text-orange-200 font-medium">POINTS</p>
+            </CardContent>
+          </Card>
+
+          <Card className="game-show-card">
             <CardHeader>
-              <CardTitle className="text-orange-600">Game Status</CardTitle>
+              <CardTitle className="text-xl font-bold text-gray-800 text-center">
+                📊 GAME STATUS
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Status:</span>
-                  <span className={`font-medium ${
-                    gameSession?.status === 'ACTIVE' ? 'text-green-600' : 'text-gray-500'
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700 font-medium">Status:</span>
+                  <span className={`font-bold px-3 py-1 rounded-full text-sm ${
+                    gameSession?.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                   }`}>
-                    {gameSession?.status || 'Waiting'}
+                    {gameSession?.status === 'ACTIVE' ? '🟢 LIVE' : '⏸️ WAITING'}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Your Score:</span>
-                  <span className="font-medium text-orange-600">{user.score}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Connection:</span>
-                  <span className={`font-medium ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                    {isConnected ? 'Connected' : 'Disconnected'}
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700 font-medium">Connection:</span>
+                  <span className={`font-bold px-3 py-1 rounded-full text-sm ${
+                    isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {isConnected ? '🟢 CONNECTED' : '🔴 DISCONNECTED'}
                   </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700 font-medium">Player ID:</span>
+                  <span className="font-bold text-orange-600">#{user.uniqueNumber}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="question-card">
+          <Card className="game-show-card">
             <CardHeader>
-              <CardTitle className="text-orange-600 flex items-center">
-                <Users className="w-5 h-5 mr-2" />
-                Recent Winners
+              <CardTitle className="text-xl font-bold text-gray-800 text-center">
+                🏆 RECENT WINNERS
               </CardTitle>
             </CardHeader>
             <CardContent>
               {winners.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {winners.slice(-5).map((winner, index) => (
-                    <div key={index} className="p-2 bg-orange-50 rounded-lg">
-                      <p className="font-medium text-orange-700">{winner.username}</p>
-                      <p className="text-sm text-orange-600">#{winner.uniqueNumber}</p>
+                    <div key={index} className="player-item p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">
+                          🏆
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800">{winner.username}</p>
+                          <p className="text-sm text-orange-600">#{winner.uniqueNumber}</p>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No winners yet</p>
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-2">🎯</div>
+                  <p className="text-gray-500 font-medium">No winners yet</p>
+                  <p className="text-sm text-gray-400">Be the first to answer correctly!</p>
+                </div>
               )}
             </CardContent>
           </Card>
