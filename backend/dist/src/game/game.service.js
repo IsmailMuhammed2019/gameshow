@@ -25,8 +25,15 @@ let GameService = class GameService {
     async getAllQuestions() {
         return this.prisma.question.findMany();
     }
-    async getActiveQuestions() {
-        return this.prisma.question.findMany({ where: { isActive: true } });
+    async getActiveQuestions(targetRole) {
+        const whereClause = { isActive: true };
+        if (targetRole) {
+            whereClause.targetRole = targetRole;
+        }
+        console.log('Getting active questions with whereClause:', whereClause);
+        const questions = await this.prisma.question.findMany({ where: whereClause });
+        console.log(`Found ${questions.length} questions for role: ${targetRole || 'ALL'}`);
+        return questions;
     }
     async startGame(gameMasterId) {
         const gameMaster = await this.prisma.user.findUnique({ where: { id: gameMasterId } });
@@ -41,21 +48,35 @@ let GameService = class GameService {
             },
         });
     }
-    async getNextQuestion(gameSessionId, gameMasterId) {
-        const gameSession = await this.prisma.gameSession.findFirst({
+    async getNextQuestion(gameSessionId, gameMasterId, targetRole) {
+        console.log(`getNextQuestion called with: gameSessionId=${gameSessionId}, gameMasterId=${gameMasterId}, targetRole=${targetRole}`);
+        let gameSession = await this.prisma.gameSession.findFirst({
             where: { id: gameSessionId, gameMasterId },
         });
+        console.log('Looking for game session with:', { gameSessionId, gameMasterId });
+        console.log('Found game session with gameMasterId:', gameSession);
         if (!gameSession) {
+            gameSession = await this.prisma.gameSession.findFirst({
+                where: { id: gameSessionId },
+            });
+            console.log('Found game session by ID only:', gameSession);
+        }
+        if (!gameSession) {
+            console.log('Game session not found');
             throw new common_1.NotFoundException('Game session not found');
         }
         if (gameSession.status !== client_1.GameStatus.ACTIVE) {
+            console.log('Game is not active, status:', gameSession.status);
             throw new common_1.BadRequestException('Game is not active');
         }
-        const questions = await this.getActiveQuestions();
+        const questions = await this.getActiveQuestions(targetRole);
+        console.log(`Found ${questions.length} questions for role: ${targetRole || 'PARTICIPANT'}`);
         if (questions.length === 0) {
-            throw new common_1.BadRequestException('No active questions available');
+            console.log(`No active questions available for role: ${targetRole || 'PARTICIPANT'}`);
+            throw new common_1.BadRequestException(`No active questions available for role: ${targetRole || 'PARTICIPANT'}`);
         }
         const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+        console.log('Selected random question:', randomQuestion.id, randomQuestion.question);
         await this.prisma.gameSession.update({
             where: { id: gameSessionId },
             data: {

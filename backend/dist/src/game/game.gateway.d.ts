@@ -16,6 +16,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private broadcastUserList;
     handleStartGame(client: Socket, data: {
         gameMasterId: string;
+        targetRole?: string;
     }): Promise<{
         success: boolean;
         gameSession: {
@@ -37,23 +38,17 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     handleNextQuestion(client: Socket, data: {
         gameSessionId: string;
         gameMasterId: string;
+        targetRole?: string;
     }): Promise<{
         success: boolean;
-        question: {
-            id: string;
-            isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
-            question: string;
-            options: string[];
-            correctAnswer: number;
-            difficulty: number;
-        };
+        participantQuestion: any;
+        audienceQuestion: any;
         error?: undefined;
     } | {
         success: boolean;
         error: any;
-        question?: undefined;
+        participantQuestion?: undefined;
+        audienceQuestion?: undefined;
     }>;
     handleSubmitAnswer(client: Socket, data: {
         userId: string;

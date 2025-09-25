@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Play, Pause, Square, Users, Trophy, Settings, LogOut, RotateCcw } from 'lucide-react';
 import io from 'socket.io-client';
+import api from '@/lib/api';
 
 export default function GameMasterPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function GameMasterPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
+  const [targetRole, setTargetRole] = useState<'PARTICIPANT' | 'AUDIENCE' | 'BOTH'>('BOTH');
   
   // Use refs to avoid dependency issues
   const socketRef = useRef<any>(null);
@@ -56,28 +58,32 @@ export default function GameMasterPage() {
     console.log('Next question clicked - socket:', !!currentSocket, 'gameSession:', !!currentGameSession, 'user:', !!currentUser);
 
     if (currentSocket && currentGameSession && currentUser?.id) {
-      console.log('Requesting next question for session:', currentGameSession.id);
+      console.log('Requesting next question for session:', currentGameSession.id, 'target role:', targetRole);
       currentSocket.emit('next_question', {
         gameSessionId: currentGameSession.id,
         gameMasterId: currentUser.id,
+        targetRole: targetRole,
       });
     } else {
       console.error('Cannot get next question: socket, gameSession, or user not available');
       setIsLoadingQuestion(false);
     }
-  }, []);
+  }, [targetRole]);
 
   const startGame = useCallback(async () => {
     const currentSocket = socketRef.current;
     const currentUser = userRef.current;
 
     if (currentSocket && currentUser?.id) {
-      console.log('Starting game with gameMasterId:', currentUser.id);
-      currentSocket.emit('start_game', { gameMasterId: currentUser.id });
+      console.log('Starting game with gameMasterId:', currentUser.id, 'targetRole:', targetRole);
+      currentSocket.emit('start_game', { 
+        gameMasterId: currentUser.id,
+        targetRole: targetRole
+      });
     } else {
       console.error('Cannot start game: socket or user not available');
     }
-  }, []);
+  }, [targetRole]);
 
   const endGame = useCallback(async () => {
     const currentSocket = socketRef.current;
@@ -97,15 +103,9 @@ export default function GameMasterPage() {
     
     if (currentSocket) {
       try {
-        const response = await fetch('/api/game/clear-scores', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        const response = await api.post('/game/clear-scores');
         
-        if (response.ok) {
+        if (response.status === 200) {
           // Emit clear scores event to all connected users
           currentSocket.emit('clear_scores');
           console.log('Scores cleared successfully');
@@ -167,21 +167,24 @@ export default function GameMasterPage() {
       newSocket.on('game_started', (session: any) => {
         console.log('Game started event received:', session);
         setGameSession(session);
-        // Automatically get the first question when game starts
-        setTimeout(() => {
-          // Use the socket directly instead of the nextQuestion function
-          if (newSocket && session) {
-            console.log('Requesting next question for session:', session.id);
-            newSocket.emit('next_question', {
-              gameSessionId: session.id,
-              gameMasterId: user?.id,
-            });
-          }
-        }, 1000);
+        // Note: First question is now automatically provided by the backend when starting the game
       });
 
-      newSocket.on('new_question', (question: any) => {
-        console.log('New question received:', question);
+      newSocket.on('new_question', (questionData: any) => {
+        console.log('New question received:', questionData);
+        // Game Master sees the appropriate question based on target role
+        let question = null;
+        if (targetRole === 'PARTICIPANT' && questionData.participantQuestion) {
+          question = questionData.participantQuestion;
+        } else if (targetRole === 'AUDIENCE' && questionData.audienceQuestion) {
+          question = questionData.audienceQuestion;
+        } else if (targetRole === 'BOTH') {
+          // For both, show participant question by default
+          question = questionData.participantQuestion || questionData.audienceQuestion;
+        } else {
+          // Fallback to any available question
+          question = questionData.participantQuestion || questionData.audienceQuestion || questionData;
+        }
         setCurrentQuestion(question);
         setIsLoadingQuestion(false);
       });
@@ -189,6 +192,10 @@ export default function GameMasterPage() {
       newSocket.on('winner_announced', (winner: any) => {
         addWinner(winner);
         setShowWinnerModal(true);
+        // Auto-dismiss modal after 3 seconds
+        setTimeout(() => {
+          setShowWinnerModal(false);
+        }, 3000);
       });
 
       newSocket.on('game_ended', (results: any) => {
@@ -197,6 +204,8 @@ export default function GameMasterPage() {
 
       newSocket.on('error', (error: any) => {
         console.error('WebSocket error:', error);
+        alert(`Error: ${error.message}`);
+        setIsLoadingQuestion(false);
       });
 
              newSocket.on('user_list_updated', (data: any) => {
@@ -219,7 +228,7 @@ export default function GameMasterPage() {
         console.log('Scores cleared:', data);
         // Show notification or update UI as needed
         alert(`Scores cleared! ${data.clearedCount} players reset to 0 points.`);
-      });
+             });
 
       return newSocket;
     };
@@ -236,7 +245,7 @@ export default function GameMasterPage() {
         socketRef.current = null;
       }
     };
-  }, []); // Empty dependency array - only run once
+  }, [targetRole]); // Include targetRole to update question handling
 
   if (!user || user.role !== 'GAME_MASTER') {
     return null;
@@ -249,14 +258,14 @@ export default function GameMasterPage() {
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-6">
             <div className="relative">
-              <img
-                src="/bantefun.jpg"
-                alt="Logo"
+          <img
+            src="/bantefun.jpg"
+            alt="Logo"
                 className="w-16 h-16 rounded-full border-4 border-orange-500 shadow-2xl"
-              />
+          />
               <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
-            <div>
+          <div>
               <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
                 🎮 GAME MASTER CONTROL
               </h1>
@@ -271,7 +280,7 @@ export default function GameMasterPage() {
               <span className="text-white font-medium">
                 {isConnected ? 'LIVE' : 'OFFLINE'}
               </span>
-            </div>
+        </div>
             <Button 
               variant="outline" 
               onClick={handleLogout} 
@@ -279,7 +288,7 @@ export default function GameMasterPage() {
             >
               <LogOut className="w-4 h-4 mr-2" />
               Exit Studio
-            </Button>
+          </Button>
           </div>
         </div>
       </div>
@@ -296,6 +305,43 @@ export default function GameMasterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Role Selection */}
+            <div className="space-y-3">
+              <label className="text-white font-medium">Target Role:</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setTargetRole('PARTICIPANT')}
+                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
+                    targetRole === 'PARTICIPANT'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                  }`}
+                >
+                  👥 Participants
+                </button>
+                <button
+                  onClick={() => setTargetRole('AUDIENCE')}
+                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
+                    targetRole === 'AUDIENCE'
+                      ? 'bg-teal-500 text-white'
+                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                  }`}
+                >
+                  👀 Audience
+                </button>
+                <button
+                  onClick={() => setTargetRole('BOTH')}
+                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
+                    targetRole === 'BOTH'
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                  }`}
+                >
+                  🌟 Both
+                </button>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 gap-4">
               <Button
                 variant="orange"
@@ -358,24 +404,24 @@ export default function GameMasterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="relative z-10">
-            {isLoadingQuestion ? (
+              {isLoadingQuestion ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-6"></div>
                 <p className="text-xl text-orange-300 font-medium">Loading question...</p>
-              </div>
-            ) : currentQuestion ? (
-              <div>
+                </div>
+              ) : currentQuestion ? (
+                <div>
                 <div className="bg-black/30 p-6 rounded-xl mb-6">
                   <p className="text-xl font-bold text-white leading-relaxed">
-                    {currentQuestion.question}
+                    {currentQuestion.question || 'No question available'}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentQuestion.options.map((option, index) => (
-                    <div 
-                      key={index}
+                  {currentQuestion.options && currentQuestion.options.map((option, index) => (
+                      <div 
+                        key={index}
                       className={`p-4 rounded-xl border-2 transition-all duration-300 ${
-                        index === currentQuestion.correctAnswer 
+                        index === (currentQuestion.correctAnswer || -1)
                           ? 'border-green-400 bg-green-500/20 text-green-300' 
                           : 'border-orange-400/50 bg-orange-500/10 text-orange-200'
                       }`}
@@ -384,22 +430,35 @@ export default function GameMasterPage() {
                         {String.fromCharCode(65 + index)}
                       </span>
                       <span className="text-lg font-medium">{option}</span>
-                    </div>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : (
+              ) : (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🎮</div>
-                <p className="text-xl text-orange-300 font-medium">
-                  Ready to start the game!
-                </p>
-                <p className="text-orange-400 mt-2">
-                  Click "START GAME" to begin
-                </p>
+                {gameSession?.status === 'ACTIVE' ? (
+                  <>
+                    <p className="text-xl text-orange-300 font-medium">
+                      Game is active!
+                    </p>
+                    <p className="text-orange-400 mt-2">
+                      Click "NEXT QUESTION" to get the first question
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl text-orange-300 font-medium">
+                      Ready to start the game!
+                    </p>
+                    <p className="text-orange-400 mt-2">
+                      Click "START GAME" to begin
+                    </p>
+                  </>
+                )}
               </div>
-            )}
-          </CardContent>
+              )}
+            </CardContent>
         </Card>
 
         {/* Participants & Audience */}
@@ -531,14 +590,14 @@ export default function GameMasterPage() {
             </DialogTitle>
             <DialogDescription className="text-center">
               {winners.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-lg font-bold text-orange-700">
+                <span className="mt-4 block">
+                  <span className="text-lg font-bold text-orange-700 block">
                     {winners[winners.length - 1].username}
-                  </p>
-                  <p className="text-orange-600">
+                  </span>
+                  <span className="text-orange-600 block">
                     #{winners[winners.length - 1].uniqueNumber}
-                  </p>
-                </div>
+                  </span>
+                </span>
               )}
             </DialogDescription>
           </DialogHeader>

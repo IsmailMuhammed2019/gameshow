@@ -24,6 +24,25 @@ export class GameController {
     return this.gameService.getActiveQuestions();
   }
 
+  @Get('questions/debug')
+  async debugQuestions() {
+    const allQuestions = await this.gameService.getAllQuestions();
+    const participantQuestions = await this.gameService.getActiveQuestions('PARTICIPANT');
+    const audienceQuestions = await this.gameService.getActiveQuestions('AUDIENCE');
+    
+    return {
+      total: allQuestions.length,
+      participant: participantQuestions.length,
+      audience: audienceQuestions.length,
+      allQuestions: allQuestions.map(q => ({
+        id: q.id,
+        question: q.question,
+        targetRole: q.targetRole,
+        isActive: q.isActive
+      }))
+    };
+  }
+
   @Post('start')
   startGame(@Request() req) {
     return this.gameService.startGame(req.user.userId);
@@ -33,8 +52,9 @@ export class GameController {
   getNextQuestion(
     @Param('sessionId') sessionId: string,
     @Request() req,
+    @Body() body: { targetRole?: string } = {},
   ) {
-    return this.gameService.getNextQuestion(sessionId, req.user.userId);
+    return this.gameService.getNextQuestion(sessionId, req.user.userId, body.targetRole);
   }
 
   @Post('submit-answer')

@@ -31,11 +31,27 @@ let GameController = class GameController {
     getActiveQuestions() {
         return this.gameService.getActiveQuestions();
     }
+    async debugQuestions() {
+        const allQuestions = await this.gameService.getAllQuestions();
+        const participantQuestions = await this.gameService.getActiveQuestions('PARTICIPANT');
+        const audienceQuestions = await this.gameService.getActiveQuestions('AUDIENCE');
+        return {
+            total: allQuestions.length,
+            participant: participantQuestions.length,
+            audience: audienceQuestions.length,
+            allQuestions: allQuestions.map(q => ({
+                id: q.id,
+                question: q.question,
+                targetRole: q.targetRole,
+                isActive: q.isActive
+            }))
+        };
+    }
     startGame(req) {
         return this.gameService.startGame(req.user.userId);
     }
-    getNextQuestion(sessionId, req) {
-        return this.gameService.getNextQuestion(sessionId, req.user.userId);
+    getNextQuestion(sessionId, req, body = {}) {
+        return this.gameService.getNextQuestion(sessionId, req.user.userId, body.targetRole);
     }
     submitAnswer(submitAnswerDto, req) {
         return this.gameService.submitAnswer(req.user.userId, submitAnswerDto.questionId, submitAnswerDto.gameSessionId, submitAnswerDto.selectedOption);
@@ -74,6 +90,12 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], GameController.prototype, "getActiveQuestions", null);
 __decorate([
+    (0, common_1.Get)('questions/debug'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "debugQuestions", null);
+__decorate([
     (0, common_1.Post)('start'),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -84,8 +106,9 @@ __decorate([
     (0, common_1.Post)('sessions/:sessionId/next-question'),
     __param(0, (0, common_1.Param)('sessionId')),
     __param(1, (0, common_1.Request)()),
+    __param(2, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], GameController.prototype, "getNextQuestion", null);
 __decorate([

@@ -12,9 +12,9 @@ export declare class GameService {
     constructor(prisma: PrismaService);
     createQuestion(createQuestionDto: CreateQuestionDto): Promise<Question>;
     getAllQuestions(): Promise<Question[]>;
-    getActiveQuestions(): Promise<Question[]>;
+    getActiveQuestions(targetRole?: string): Promise<Question[]>;
     startGame(gameMasterId: string): Promise<GameSession>;
-    getNextQuestion(gameSessionId: string, gameMasterId: string): Promise<Question>;
+    getNextQuestion(gameSessionId: string, gameMasterId: string, targetRole?: string): Promise<Question>;
     submitAnswer(userId: string, questionId: string, gameSessionId: string, selectedOption: number): Promise<{
         isCorrect: boolean;
         correctAnswer: number;

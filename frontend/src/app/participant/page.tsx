@@ -71,11 +71,14 @@ export default function ParticipantPage() {
       setGameSession(session);
     });
 
-    newSocket.on('new_question', (question: any) => {
+    newSocket.on('new_question', (questionData: any) => {
+      // For participants, use the participant question
+      const question = questionData.participantQuestion || questionData;
       setCurrentQuestion(question);
       setSelectedOption(null);
       setAnswerResult(undefined as any);
       setScreenColor('');
+      setShowScreenOverlay(false);
     });
 
     newSocket.on('answer_result', (result: any) => {
@@ -115,6 +118,10 @@ export default function ParticipantPage() {
       console.log('Winner announced:', winner);
       addWinner(winner);
       setShowWinnerModal(true);
+      // Auto-dismiss modal after 3 seconds
+      setTimeout(() => {
+        setShowWinnerModal(false);
+      }, 3000);
     });
 
     newSocket.on('game_session_updated', (session: any) => {
@@ -250,7 +257,7 @@ export default function ParticipantPage() {
                     </p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {currentQuestion.options.map((option, index) => {
+                    {currentQuestion.options && currentQuestion.options.map((option, index) => {
                       let buttonClass = 'answer-option';
                       let isDisabled = isAnswering || answerResult !== undefined;
                       
@@ -412,14 +419,14 @@ export default function ParticipantPage() {
             </DialogTitle>
             <DialogDescription className="text-center">
               {winners.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-lg font-bold text-orange-700">
+                <span className="mt-4 block">
+                  <span className="text-lg font-bold text-orange-700 block">
                     {winners[winners.length - 1].username}
-                  </p>
-                  <p className="text-orange-600">
+                  </span>
+                  <span className="text-orange-600 block">
                     #{winners[winners.length - 1].uniqueNumber}
-                  </p>
-                </div>
+                  </span>
+                </span>
               )}
             </DialogDescription>
           </DialogHeader>

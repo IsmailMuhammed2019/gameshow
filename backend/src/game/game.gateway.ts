@@ -139,10 +139,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('start_game')
   async handleStartGame(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { gameMasterId: string },
+    @MessageBody() data: { gameMasterId: string; targetRole?: string },
   ) {
     try {
-      console.log('Start game requested by:', data.gameMasterId);
+      console.log('Start game requested by:', data.gameMasterId, 'targetRole:', data.targetRole);
       const gameSession = await this.gameService.startGame(data.gameMasterId);
       console.log('Game session created:', gameSession);
       
@@ -152,6 +152,33 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Emit to all connected users (broadcast to everyone)
       this.server.emit('game_started', gameSession);
       console.log('Game started event broadcasted');
+      
+      // Automatically get the first question based on target role
+      if (data.targetRole) {
+        console.log('Getting first question for target role:', data.targetRole);
+        
+        // Get questions based on target role
+        let participantQuestion = null;
+        let audienceQuestion = null;
+
+        if (data.targetRole === 'BOTH' || data.targetRole === 'PARTICIPANT') {
+          participantQuestion = await this.gameService.getNextQuestion(gameSession.id, data.gameMasterId, 'PARTICIPANT');
+        }
+
+        if (data.targetRole === 'BOTH' || data.targetRole === 'AUDIENCE') {
+          audienceQuestion = await this.gameService.getNextQuestion(gameSession.id, data.gameMasterId, 'AUDIENCE');
+        }
+
+        console.log('First participant question:', participantQuestion);
+        console.log('First audience question:', audienceQuestion);
+
+        // Send the first question to all clients
+        this.server.emit('new_question', {
+          participantQuestion,
+          audienceQuestion,
+        });
+        console.log('First questions broadcasted to all clients');
+      }
       
       return { success: true, gameSession };
     } catch (error) {
@@ -164,18 +191,34 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('next_question')
   async handleNextQuestion(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { gameSessionId: string; gameMasterId: string },
+    @MessageBody() data: { gameSessionId: string; gameMasterId: string; targetRole?: string },
   ) {
     try {
       console.log('Next question requested:', data);
-      const question = await this.gameService.getNextQuestion(data.gameSessionId, data.gameMasterId);
-      console.log('Question retrieved:', question);
       
-      // Emit to all connected users (broadcast to everyone)
-      this.server.emit('new_question', question);
-      console.log('Question broadcasted to all clients');
+      // Get questions based on target role
+      let participantQuestion = null;
+      let audienceQuestion = null;
       
-      return { success: true, question };
+      if (data.targetRole === 'BOTH' || data.targetRole === 'PARTICIPANT') {
+        participantQuestion = await this.gameService.getNextQuestion(data.gameSessionId, data.gameMasterId, 'PARTICIPANT');
+      }
+      
+      if (data.targetRole === 'BOTH' || data.targetRole === 'AUDIENCE') {
+        audienceQuestion = await this.gameService.getNextQuestion(data.gameSessionId, data.gameMasterId, 'AUDIENCE');
+      }
+      
+      console.log('Participant question retrieved:', participantQuestion);
+      console.log('Audience question retrieved:', audienceQuestion);
+      
+      // Send different questions to different user roles
+      this.server.emit('new_question', {
+        participantQuestion,
+        audienceQuestion,
+      });
+      console.log('Questions broadcasted to all clients');
+      
+      return { success: true, participantQuestion, audienceQuestion };
     } catch (error) {
       console.error('Error getting next question:', error);
       client.emit('error', { message: error.message });

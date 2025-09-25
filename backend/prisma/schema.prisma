@@ -48,6 +48,7 @@ model Question {
   options       String[]
   correctAnswer Int
   difficulty    Int      @default(1)
+  targetRole    UserRole @default(PARTICIPANT) // Which role this question is for
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

@@ -114,11 +114,147 @@ async function main() {
     console.log('👑 Created admin user:', adminUser.username);
     for (const questionData of sampleQuestions) {
         await prisma.question.create({
-            data: questionData,
+            data: {
+                ...questionData,
+                targetRole: 'PARTICIPANT',
+                isActive: true,
+            },
+        });
+    }
+    const audienceQuestions = [
+        {
+            question: "What color is the sky on a clear day?",
+            options: ["Red", "Blue", "Green", "Yellow"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "How many legs does a cat have?",
+            options: ["2", "3", "4", "5"],
+            correctAnswer: 2,
+            difficulty: 1,
+        },
+        {
+            question: "What do you use to write on paper?",
+            options: ["Fork", "Pen", "Spoon", "Plate"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What season comes after winter?",
+            options: ["Summer", "Fall", "Spring", "Autumn"],
+            correctAnswer: 2,
+            difficulty: 2,
+        },
+        {
+            question: "What is 2 + 2?",
+            options: ["3", "4", "5", "6"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What animal says 'moo'?",
+            options: ["Dog", "Cat", "Cow", "Pig"],
+            correctAnswer: 2,
+            difficulty: 1,
+        },
+        {
+            question: "How many wheels does a bicycle have?",
+            options: ["1", "2", "3", "4"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What do you drink when you're thirsty?",
+            options: ["Food", "Water", "Clothes", "Books"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What comes after Monday?",
+            options: ["Sunday", "Tuesday", "Wednesday", "Thursday"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What color is grass?",
+            options: ["Red", "Blue", "Green", "Yellow"],
+            correctAnswer: 2,
+            difficulty: 1,
+        },
+        {
+            question: "How many fingers do you have on one hand?",
+            options: ["3", "4", "5", "6"],
+            correctAnswer: 2,
+            difficulty: 1,
+        },
+        {
+            question: "What do you use to cut paper?",
+            options: ["Spoon", "Scissors", "Fork", "Plate"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What is the opposite of hot?",
+            options: ["Warm", "Cold", "Cool", "Freezing"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What do you wear on your feet?",
+            options: ["Hat", "Shirt", "Shoes", "Gloves"],
+            correctAnswer: 2,
+            difficulty: 1,
+        },
+        {
+            question: "What do you use to brush your teeth?",
+            options: ["Soap", "Toothbrush", "Towel", "Comb"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What is the first letter of the alphabet?",
+            options: ["B", "A", "C", "D"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What do you use to see?",
+            options: ["Ears", "Eyes", "Nose", "Mouth"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What is 1 + 1?",
+            options: ["1", "2", "3", "4"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+        {
+            question: "What do you use to eat soup?",
+            options: ["Fork", "Knife", "Spoon", "Chopsticks"],
+            correctAnswer: 2,
+            difficulty: 1,
+        },
+        {
+            question: "What do you call a baby cat?",
+            options: ["Puppy", "Kitten", "Cub", "Chick"],
+            correctAnswer: 1,
+            difficulty: 1,
+        },
+    ];
+    for (const questionData of audienceQuestions) {
+        await prisma.question.create({
+            data: {
+                ...questionData,
+                targetRole: 'AUDIENCE',
+                isActive: true,
+            },
         });
     }
     console.log('✅ Database seeded successfully!');
-    console.log(`📝 Created ${sampleQuestions.length} sample questions`);
+    console.log(`📝 Created ${sampleQuestions.length} participant questions`);
+    console.log(`📝 Created ${audienceQuestions.length} audience questions`);
     console.log('🔑 Admin credentials:');
     console.log('   Username: admin');
     console.log('   Password: admin123');
