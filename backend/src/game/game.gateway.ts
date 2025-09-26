@@ -260,8 +260,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const updatedGameSession = await this.gameService.getGameSession(data.gameSessionId);
       this.server.emit('game_session_updated', updatedGameSession);
 
-      // If correct, show winner to all participants and game master
-      if (result.isCorrect) {
+      // If correct and user is a participant, show winner to all participants and game master
+      if (result.isCorrect && updatedUser.role === 'PARTICIPANT') {
         this.server.emit('winner_announced', {
           userId: data.userId,
           username: updatedUser.username,

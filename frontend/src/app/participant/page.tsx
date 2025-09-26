@@ -34,8 +34,7 @@ export default function ParticipantPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
-  const [screenColor, setScreenColor] = useState('');
-  const [showScreenOverlay, setShowScreenOverlay] = useState(false);
+  // Removed screen overlay functionality
   const [showCelebration, setShowCelebration] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -77,8 +76,6 @@ export default function ParticipantPage() {
       setCurrentQuestion(question);
       setSelectedOption(null);
       setAnswerResult(undefined as any);
-      setScreenColor('');
-      setShowScreenOverlay(false);
     });
 
     newSocket.on('answer_result', (result: any) => {
@@ -97,21 +94,6 @@ export default function ParticipantPage() {
       
       // Trigger celebration animation
       setShowCelebration(result.isCorrect);
-      
-      // Set full screen overlay based on result
-      if (result.isCorrect) {
-        setScreenColor('screen-green');
-        setShowScreenOverlay(true);
-      } else {
-        setScreenColor('screen-red');
-        setShowScreenOverlay(true);
-      }
-      
-      // Reset screen overlay after animation
-      setTimeout(() => {
-        setScreenColor('');
-        setShowScreenOverlay(false);
-      }, 2000);
     });
 
     newSocket.on('winner_announced', (winner: any) => {
@@ -193,7 +175,7 @@ export default function ParticipantPage() {
   }
 
   return (
-    <div className={`min-h-screen p-4 transition-colors duration-500 ${screenColor || 'participant-screen'}`}>
+    <div className="min-h-screen p-4 participant-screen">
       {/* TV Show Header */}
       <div className="game-show-header p-6 mb-8 rounded-b-3xl">
         <div className="flex justify-between items-center">
@@ -294,21 +276,27 @@ export default function ParticipantPage() {
                         ? 'bg-green-100 border-2 border-green-300' 
                         : 'bg-red-100 border-2 border-red-300'
                     }`}>
-                      <div className="text-4xl mb-2">
+                      <div className="text-6xl mb-4">
                         {answerResult.isCorrect ? '🎉' : '😢'}
                       </div>
-                      <p className={`text-xl font-bold ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                        {answerResult.isCorrect ? 'Excellent! You got it right!' : 'Oops! That\'s not correct'}
+                      <p className={`text-2xl font-bold ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                        {answerResult.isCorrect ? '🎊 EXCELLENT! 🎊' : '❌ Not Quite Right'}
                       </p>
                       {!answerResult.isCorrect && (
-                        <p className="text-sm text-gray-600 mt-2">
-                          The correct answer was: <span className="font-bold">{String.fromCharCode(65 + answerResult.correctAnswer)}</span>
-                        </p>
+                        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                          <p className="text-sm text-gray-600">
+                            The correct answer was: <span className="font-bold text-lg">{String.fromCharCode(65 + answerResult.correctAnswer)}</span>
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">Don't worry, you can still win!</p>
+                        </div>
                       )}
                       {answerResult.isCorrect && (
-                        <p className="text-sm text-green-600 mt-2 font-medium">
-                          +1 Point! Keep it up! 🚀
-                        </p>
+                        <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                          <p className="text-lg text-green-700 font-bold">
+                            🏆 +1 POINT! 🏆
+                          </p>
+                          <p className="text-sm text-green-600 mt-1">You're on fire! Keep it up! 🔥</p>
+                        </div>
                       )}
                     </div>
                   )}
@@ -316,8 +304,15 @@ export default function ParticipantPage() {
               ) : (
                 <div className="text-center py-12">
                   <Trophy className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-                  <p className="text-xl text-gray-500">Waiting for the game to start...</p>
-                  <p className="text-gray-400 mt-2">The game master will begin the game soon!</p>
+                  <div className="text-center">
+                    <div className="text-6xl mb-4">🎯</div>
+                    <p className="text-xl text-gray-500 font-medium">Waiting for the game to start...</p>
+                    <p className="text-gray-400 mt-2">The game master will begin the game soon!</p>
+                    <div className="mt-6 p-4 bg-orange-100 rounded-lg border border-orange-200">
+                      <p className="text-orange-800 font-medium">🎮 You're ready to play!</p>
+                      <p className="text-sm text-orange-600 mt-1">Answer questions correctly to earn points and become the winner!</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -340,6 +335,10 @@ export default function ParticipantPage() {
                 {user.score || 0}
               </div>
               <p className="text-orange-200 font-medium">POINTS</p>
+              <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
+                <p className="text-sm text-white/80">Current Rank</p>
+                <p className="text-2xl font-bold text-yellow-400">#{user.score || 0}</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -354,9 +353,9 @@ export default function ParticipantPage() {
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                   <span className="text-gray-700 font-medium">Status:</span>
                   <span className={`font-bold px-3 py-1 rounded-full text-sm ${
-                    gameSession?.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    gameSession?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                   }`}>
-                    {gameSession?.status === 'ACTIVE' ? '🟢 LIVE' : '⏸️ WAITING'}
+                    {gameSession?.status === 'active' ? '🟢 LIVE' : '⏸️ WAITING'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
@@ -443,17 +442,14 @@ export default function ParticipantPage() {
 
       {/* Celebration Animation */}
       <Celebration 
-        isCorrect={showCelebration} 
+        isCorrect={showCelebration || false} 
         onComplete={() => setShowCelebration(null)}
       />
 
       {/* Sound Effects */}
-      <SoundEffects isCorrect={showCelebration} />
+      <SoundEffects isCorrect={showCelebration || false} />
 
-      {/* Full Screen Color Overlay */}
-      {showScreenOverlay && (
-        <div className={screenColor}></div>
-      )}
+      {/* Removed screen overlay functionality */}
     </div>
   );
 }

@@ -146,8 +146,8 @@ export class GameService {
         },
       });
 
-      // Update user score if correct
-      if (isCorrect) {
+      // Only update score for PARTICIPANTS, not AUDIENCE
+      if (isCorrect && user.role === 'PARTICIPANT') {
         await tx.user.update({
           where: { id: userId },
           data: { score: { increment: 1 } },
@@ -185,7 +185,10 @@ export class GameService {
       const userId = answer.userId;
       if (!acc[userId]) {
         acc[userId] = {
-          user: answer.user,
+          user: {
+            ...answer.user,
+            score: Number(answer.user.score), // Convert BigInt to number
+          },
           correctAnswers: 0,
           totalAnswers: 0,
         };

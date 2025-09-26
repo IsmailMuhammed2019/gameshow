@@ -346,7 +346,7 @@ export default function GameMasterPage() {
               <Button
                 variant="orange"
                 onClick={startGame}
-                disabled={!isConnected || gameSession?.status === 'ACTIVE'}
+                disabled={!isConnected || gameSession?.status === 'active'}
                 className="w-full h-16 text-lg font-bold bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-lg"
               >
                 <Play className="w-6 h-6 mr-3" />
@@ -355,7 +355,7 @@ export default function GameMasterPage() {
               <Button
                 variant="teal-blue"
                 onClick={nextQuestion}
-                disabled={!isConnected || !gameSession || gameSession.status !== 'ACTIVE' || isLoadingQuestion}
+                disabled={!isConnected || !gameSession || gameSession.status !== 'active' || isLoadingQuestion}
                 className="w-full h-16 text-lg font-bold bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 shadow-lg"
                 title={`Connected: ${isConnected}, GameSession: ${!!gameSession}, Status: ${gameSession?.status}, Loading: ${isLoadingQuestion}`}
               >
@@ -437,23 +437,33 @@ export default function GameMasterPage() {
               ) : (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🎮</div>
-                {gameSession?.status === 'ACTIVE' ? (
+                {gameSession?.status === 'active' ? (
                   <>
+                    <div className="text-6xl mb-4">🎮</div>
                     <p className="text-xl text-orange-300 font-medium">
-                      Game is active!
+                      Game is LIVE!
                     </p>
                     <p className="text-orange-400 mt-2">
                       Click "NEXT QUESTION" to get the first question
                     </p>
+                    <div className="mt-4 p-3 bg-green-100 rounded-lg border border-green-200">
+                      <p className="text-green-800 font-medium">🟢 Game Active</p>
+                      <p className="text-sm text-green-600">Players are ready to answer!</p>
+                    </div>
                   </>
                 ) : (
                   <>
+                    <div className="text-6xl mb-4">🎯</div>
                     <p className="text-xl text-orange-300 font-medium">
                       Ready to start the game!
                     </p>
                     <p className="text-orange-400 mt-2">
                       Click "START GAME" to begin
                     </p>
+                    <div className="mt-4 p-3 bg-blue-100 rounded-lg border border-blue-200">
+                      <p className="text-blue-800 font-medium">🎛️ Game Master Control</p>
+                      <p className="text-sm text-blue-600">You control the entire game flow!</p>
+                    </div>
                   </>
                 )}
               </div>

@@ -32,8 +32,7 @@ export default function AudiencePage() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswering, setIsAnswering] = useState(false);
   const [answerResult, setAnswerResult] = useState<any>(null);
-  const [screenColor, setScreenColor] = useState('');
-  const [showScreenOverlay, setShowScreenOverlay] = useState(false);
+  // Removed screen overlay functionality
 
   useEffect(() => {
     if (!user || user.role !== 'AUDIENCE') {
@@ -76,8 +75,6 @@ export default function AudiencePage() {
       setSelectedOption(null);
       setAnswerResult(null);
       setIsAnswering(false);
-      setScreenColor('');
-      setShowScreenOverlay(false);
     });
 
     newSocket.on('winner_announced', (winner: any) => {
@@ -92,21 +89,6 @@ export default function AudiencePage() {
     newSocket.on('answer_result', (result: any) => {
       setAnswerResult(result);
       setIsAnswering(false);
-      
-      // Set full screen overlay based on result
-      if (result.isCorrect) {
-        setScreenColor('screen-green');
-        setShowScreenOverlay(true);
-      } else {
-        setScreenColor('screen-red');
-        setShowScreenOverlay(true);
-      }
-      
-      // Reset screen overlay after animation
-      setTimeout(() => {
-        setScreenColor('');
-        setShowScreenOverlay(false);
-      }, 2000);
     });
 
     return () => {
@@ -225,6 +207,9 @@ export default function AudiencePage() {
                       <p className="text-gray-600 mt-2">
                         The correct answer was: {String.fromCharCode(65 + answerResult.correctAnswer)}. {currentQuestion.options && currentQuestion.options[answerResult.correctAnswer]}
                       </p>
+                      <p className="text-sm text-blue-600 mt-2 font-medium">
+                        👀 As an audience member, you don't earn points but can still participate!
+                      </p>
                     </div>
                   )}
                 </div>
@@ -297,10 +282,7 @@ export default function AudiencePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Full Screen Color Overlay */}
-      {showScreenOverlay && (
-        <div className={screenColor}></div>
-      )}
+      {/* Removed screen overlay functionality */}
     </div>
   );
 }
