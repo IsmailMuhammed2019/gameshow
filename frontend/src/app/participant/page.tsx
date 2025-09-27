@@ -36,6 +36,7 @@ export default function ParticipantPage() {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   // Removed screen overlay functionality
   const [showCelebration, setShowCelebration] = useState<boolean | null>(null);
+  const [hasAnswered, setHasAnswered] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== 'PARTICIPANT') {
@@ -76,11 +77,14 @@ export default function ParticipantPage() {
       setCurrentQuestion(question);
       setSelectedOption(null);
       setAnswerResult(undefined as any);
+      setHasAnswered(false);
+      setShowCelebration(null);
     });
 
     newSocket.on('answer_result', (result: any) => {
       setAnswerResult(result);
       setAnswering(false);
+      setHasAnswered(true);
       
       // Update user score if provided in the result
       if (result.updatedUser) {
@@ -441,7 +445,7 @@ export default function ParticipantPage() {
       </Dialog>
 
       {/* Celebration Animation */}
-      {showCelebration !== null && (
+      {showCelebration !== null && hasAnswered && (
         <Celebration 
           isCorrect={showCelebration} 
           onComplete={() => setShowCelebration(null)}
@@ -449,7 +453,7 @@ export default function ParticipantPage() {
       )}
 
       {/* Sound Effects */}
-      {showCelebration !== null && (
+      {showCelebration !== null && hasAnswered && (
         <SoundEffects isCorrect={showCelebration} />
       )}
 

@@ -219,11 +219,19 @@ let GameGateway = class GameGateway {
     }
     async handleClearScores(client) {
         try {
-            const user = this.connectedUsers.get(client.id);
+            let user = null;
+            for (const [userId, userData] of this.connectedUsers.entries()) {
+                if (userData.socket.id === client.id) {
+                    user = userData;
+                    break;
+                }
+            }
             if (!user || user.role !== 'GAME_MASTER') {
+                console.log('Clear scores unauthorized - user:', user);
                 client.emit('error', { message: 'Only game masters can clear scores' });
                 return { success: false, error: 'Unauthorized' };
             }
+            console.log('Clearing scores for game master:', user.userId);
             const result = await this.gameService.clearAllScores(user.userId);
             const userDetails = await this.gameService.getUserById(user.userId);
             this.server.emit('scores_cleared', {

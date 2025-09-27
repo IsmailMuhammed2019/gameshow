@@ -99,20 +99,15 @@ export default function GameMasterPage() {
   }, []);
 
   const clearScores = useCallback(async () => {
-    const currentSocket = socketRef.current;
-    
-    if (currentSocket) {
-      try {
-        const response = await api.post('/game/clear-scores');
-        
-        if (response.status === 200) {
-          // Emit clear scores event to all connected users
-          currentSocket.emit('clear_scores');
-          console.log('Scores cleared successfully');
-        }
-      } catch (error) {
-        console.error('Error clearing scores:', error);
+    try {
+      console.log('Clearing scores...');
+      const currentSocket = socketRef.current;
+      if (currentSocket) {
+        currentSocket.emit('clear_scores');
+        console.log('Clear scores event emitted');
       }
+    } catch (error) {
+      console.error('Error clearing scores:', error);
     }
   }, []);
 
@@ -370,7 +365,7 @@ export default function GameMasterPage() {
               <Button
                 variant="teal-blue"
                 onClick={nextQuestion}
-                disabled={!isConnected || !gameSession || gameSession.status !== 'active' || isLoadingQuestion}
+                disabled={isLoadingQuestion}
                 className="w-full h-16 text-lg font-bold bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 shadow-lg"
                 title={`Debug: Connected=${isConnected}, GameSession=${!!gameSession}, Status=${gameSession?.status}, Loading=${isLoadingQuestion}, TargetRole=${targetRole}`}
               >

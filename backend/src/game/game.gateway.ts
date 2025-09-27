@@ -234,6 +234,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+
   @SubscribeMessage('submit_answer')
   async handleSubmitAnswer(
     @ConnectedSocket() client: Socket,
@@ -307,13 +308,22 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('clear_scores')
   async handleClearScores(@ConnectedSocket() client: Socket) {
     try {
-      // Get the user from the connected users map
-      const user = this.connectedUsers.get(client.id);
+      // Find the user by client ID in the connected users map
+      let user = null;
+      for (const [userId, userData] of this.connectedUsers.entries()) {
+        if (userData.socket.id === client.id) {
+          user = userData;
+          break;
+        }
+      }
+      
       if (!user || user.role !== 'GAME_MASTER') {
+        console.log('Clear scores unauthorized - user:', user);
         client.emit('error', { message: 'Only game masters can clear scores' });
         return { success: false, error: 'Unauthorized' };
       }
 
+      console.log('Clearing scores for game master:', user.userId);
       // Clear all scores using the game service
       const result = await this.gameService.clearAllScores(user.userId);
       
