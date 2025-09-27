@@ -167,6 +167,8 @@ export default function GameMasterPage() {
       newSocket.on('game_started', (session: any) => {
         console.log('Game started event received:', session);
         setGameSession(session);
+        console.log('Game session set:', session);
+        console.log('Game session status:', session?.status);
         // Note: First question is now automatically provided by the backend when starting the game
       });
 
@@ -208,6 +210,18 @@ export default function GameMasterPage() {
         setIsLoadingQuestion(false);
       });
 
+      // Add acknowledgment for next_question
+      newSocket.on('next_question_response', (response: any) => {
+        console.log('Next question response:', response);
+        if (response.success) {
+          console.log('Next question successful');
+        } else {
+          console.error('Next question failed:', response.error);
+          alert(`Failed to get next question: ${response.error}`);
+        }
+        setIsLoadingQuestion(false);
+      });
+
              newSocket.on('user_list_updated', (data: any) => {
                console.log('User list updated:', data);
                setParticipants(data.participants || []);
@@ -217,6 +231,7 @@ export default function GameMasterPage() {
              newSocket.on('game_session_updated', (session: any) => {
                console.log('Game session updated:', session);
                setGameSession(session);
+               console.log('Updated game session status:', session?.status);
              });
 
       newSocket.on('answer_result', (result: any) => {
@@ -357,7 +372,7 @@ export default function GameMasterPage() {
                 onClick={nextQuestion}
                 disabled={!isConnected || !gameSession || gameSession.status !== 'active' || isLoadingQuestion}
                 className="w-full h-16 text-lg font-bold bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 shadow-lg"
-                title={`Connected: ${isConnected}, GameSession: ${!!gameSession}, Status: ${gameSession?.status}, Loading: ${isLoadingQuestion}`}
+                title={`Debug: Connected=${isConnected}, GameSession=${!!gameSession}, Status=${gameSession?.status}, Loading=${isLoadingQuestion}, TargetRole=${targetRole}`}
               >
                 {isLoadingQuestion ? (
                   <>

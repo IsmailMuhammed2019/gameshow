@@ -112,7 +112,7 @@ let GameService = class GameService {
                     responseTime,
                 },
             });
-            if (isCorrect) {
+            if (isCorrect && user.role === 'PARTICIPANT') {
                 await tx.user.update({
                     where: { id: userId },
                     data: { score: { increment: 1 } },
@@ -143,7 +143,10 @@ let GameService = class GameService {
             const userId = answer.userId;
             if (!acc[userId]) {
                 acc[userId] = {
-                    user: answer.user,
+                    user: {
+                        ...answer.user,
+                        score: Number(answer.user.score),
+                    },
                     correctAnswers: 0,
                     totalAnswers: 0,
                 };

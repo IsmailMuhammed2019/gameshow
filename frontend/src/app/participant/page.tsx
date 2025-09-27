@@ -441,13 +441,17 @@ export default function ParticipantPage() {
       </Dialog>
 
       {/* Celebration Animation */}
-      <Celebration 
-        isCorrect={showCelebration || false} 
-        onComplete={() => setShowCelebration(null)}
-      />
+      {showCelebration !== null && (
+        <Celebration 
+          isCorrect={showCelebration} 
+          onComplete={() => setShowCelebration(null)}
+        />
+      )}
 
       {/* Sound Effects */}
-      <SoundEffects isCorrect={showCelebration || false} />
+      {showCelebration !== null && (
+        <SoundEffects isCorrect={showCelebration} />
+      )}
 
       {/* Removed screen overlay functionality */}
     </div>

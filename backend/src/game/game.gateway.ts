@@ -218,10 +218,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       console.log('Questions broadcasted to all clients');
       
+      // Send acknowledgment back to the game master
+      client.emit('next_question_response', { 
+        success: true, 
+        participantQuestion, 
+        audienceQuestion 
+      });
+      
       return { success: true, participantQuestion, audienceQuestion };
     } catch (error) {
       console.error('Error getting next question:', error);
       client.emit('error', { message: error.message });
+      client.emit('next_question_response', { success: false, error: error.message });
       return { success: false, error: error.message };
     }
   }

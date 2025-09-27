@@ -11,7 +11,7 @@ export default function Celebration({ isCorrect, onComplete }: CelebrationProps)
   const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
-    if (isCorrect !== null) {
+    if (isCorrect !== null && isCorrect !== undefined) {
       setShowCelebration(true);
       
       // Hide celebration after animation completes
@@ -84,8 +84,12 @@ export default function Celebration({ isCorrect, onComplete }: CelebrationProps)
     );
   } else {
     return (
-      <div className="sad-face">
-        😢
+      <div className="wrong-answer-message">
+        <div className="text-center">
+          <div className="text-6xl mb-4">❌</div>
+          <div className="text-2xl font-bold text-red-600 mb-2">Wrong Answer</div>
+          <div className="text-lg text-gray-600">Better luck next time!</div>
+        </div>
       </div>
     );
   }

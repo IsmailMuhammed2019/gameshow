@@ -157,11 +157,17 @@ let GameGateway = class GameGateway {
                 audienceQuestion,
             });
             console.log('Questions broadcasted to all clients');
+            client.emit('next_question_response', {
+                success: true,
+                participantQuestion,
+                audienceQuestion
+            });
             return { success: true, participantQuestion, audienceQuestion };
         }
         catch (error) {
             console.error('Error getting next question:', error);
             client.emit('error', { message: error.message });
+            client.emit('next_question_response', { success: false, error: error.message });
             return { success: false, error: error.message };
         }
     }
@@ -183,7 +189,7 @@ let GameGateway = class GameGateway {
             });
             const updatedGameSession = await this.gameService.getGameSession(data.gameSessionId);
             this.server.emit('game_session_updated', updatedGameSession);
-            if (result.isCorrect) {
+            if (result.isCorrect && updatedUser.role === 'PARTICIPANT') {
                 this.server.emit('winner_announced', {
                     userId: data.userId,
                     username: updatedUser.username,

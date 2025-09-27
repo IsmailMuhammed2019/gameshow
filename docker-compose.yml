@@ -25,13 +25,13 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: millionaire-backend
     environment:
       DATABASE_URL: postgresql://postgres:postgres123@postgres:5432/millionaire_game?schema=public
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
       PORT: 3001
-      NODE_ENV: production
+      NODE_ENV: development
       FRONTEND_URL: http://localhost:3000
     ports:
       - "3001:3001"
@@ -46,8 +46,7 @@ services:
     command: >
       sh -c "
         npx prisma migrate deploy &&
-        npx prisma db seed &&
-        npm run start:prod
+        npm run start:dev
       "
 
   # Frontend
