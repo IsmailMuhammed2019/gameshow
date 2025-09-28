@@ -224,6 +224,28 @@ let GameService = class GameService {
             clearedCount: result.count,
         };
     }
+    async updateQuestion(questionId, updateData) {
+        return this.prisma.question.update({
+            where: { id: questionId },
+            data: updateData,
+        });
+    }
+    async getQuestionById(questionId) {
+        return this.prisma.question.findUnique({
+            where: { id: questionId },
+        });
+    }
+    async getAnswersForQuestion(questionId, gameSessionId) {
+        return this.prisma.answer.findMany({
+            where: {
+                questionId,
+                gameSessionId,
+            },
+            include: {
+                user: true,
+            },
+        });
+    }
 };
 exports.GameService = GameService;
 exports.GameService = GameService = __decorate([

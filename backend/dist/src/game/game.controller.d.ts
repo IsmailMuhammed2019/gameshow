@@ -14,6 +14,7 @@ export declare class GameController {
         correctAnswer: number;
         difficulty: number;
         targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
     }>;
     getAllQuestions(): Promise<{
         id: string;
@@ -25,6 +26,31 @@ export declare class GameController {
         correctAnswer: number;
         difficulty: number;
         targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
+    }[]>;
+    getParticipantQuestions(): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        difficulty: number;
+        targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
+    }[]>;
+    getAudienceQuestions(): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        difficulty: number;
+        targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
     }[]>;
     getActiveQuestions(): Promise<{
         id: string;
@@ -36,17 +62,33 @@ export declare class GameController {
         correctAnswer: number;
         difficulty: number;
         targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
     }[]>;
     debugQuestions(): Promise<{
-        total: number;
-        participant: number;
-        audience: number;
-        allQuestions: {
-            id: string;
-            question: string;
-            targetRole: import(".prisma/client").$Enums.UserRole;
-            isActive: boolean;
-        }[];
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        difficulty: number;
+        targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
+    }[]>;
+    updateQuestion(id: string, updateData: {
+        isActive?: boolean;
+    }): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        difficulty: number;
+        targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
     }>;
     startGame(req: any): Promise<{
         id: string;
@@ -70,6 +112,7 @@ export declare class GameController {
         correctAnswer: number;
         difficulty: number;
         targetRole: import(".prisma/client").$Enums.UserRole;
+        questionType: import(".prisma/client").$Enums.QuestionType;
     }>;
     submitAnswer(submitAnswerDto: SubmitAnswerDto, req: any): Promise<{
         isCorrect: boolean;

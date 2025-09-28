@@ -254,15 +254,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Get updated user information after score update
       const updatedUser = await this.gameService.getUserById(data.userId);
 
-      // Emit result to the user who answered with updated user info
-      client.emit('answer_result', {
-        isCorrect: result.isCorrect,
-        correctAnswer: result.correctAnswer,
+      // Store the answer result but don't reveal it yet
+      // The game master will control when to reveal answers
+      client.emit('answer_submitted', {
+        submitted: true,
         selectedOption: data.selectedOption,
-        updatedUser: {
-          ...updatedUser,
-          score: Number(updatedUser.score),
-        },
+        message: 'Answer submitted! Waiting for game master to reveal results...',
       });
 
       // Update game session state after answer submission
@@ -285,6 +282,58 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { success: true, result };
     } catch (error) {
       console.error('Error in handleSubmitAnswer:', error);
+      client.emit('error', { message: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  @SubscribeMessage('reveal_answer')
+  async handleRevealAnswer(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { questionId: string; gameSessionId: string },
+  ) {
+    try {
+      // Find the user by client ID in the connected users map
+      let user = null;
+      for (const [userId, userData] of this.connectedUsers.entries()) {
+        if (userData.socket.id === client.id) {
+          user = userData;
+          break;
+        }
+      }
+      
+      if (!user || user.role !== 'GAME_MASTER') {
+        client.emit('error', { message: 'Only game masters can reveal answers' });
+        return { success: false, error: 'Unauthorized' };
+      }
+
+      // Get the question details
+      const question = await this.gameService.getQuestionById(data.questionId);
+      if (!question) {
+        client.emit('error', { message: 'Question not found' });
+        return { success: false, error: 'Question not found' };
+      }
+
+      // Get all answers for this question
+      const answers = await this.gameService.getAnswersForQuestion(data.questionId, data.gameSessionId);
+
+      // Broadcast the correct answer and results to all users
+      this.server.emit('answer_revealed', {
+        questionId: data.questionId,
+        correctAnswer: question.correctAnswer,
+        correctOption: question.options[question.correctAnswer],
+        answers: answers.map(answer => ({
+          userId: answer.userId,
+          selectedOption: answer.selectedOption,
+          isCorrect: answer.isCorrect,
+          username: answer.user?.username,
+          role: answer.user?.role,
+        })),
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error revealing answer:', error);
       client.emit('error', { message: error.message });
       return { success: false, error: error.message };
     }

@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Users, Gamepad2 } from 'lucide-react';
+import { Trophy, Users, Gamepad2, LogOut } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -48,9 +48,9 @@ export default function HomePage() {
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
             <img 
-              src="/bantefun.jpg" 
+              src="/logo.png" 
               alt="Millionaire Game Logo" 
-              className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
+              className="w-48 h-24 shadow-lg"
             />
           </div>
           <h1 className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
@@ -59,6 +59,18 @@ export default function HomePage() {
           <p className="text-xl text-white/90 drop-shadow">
           "Your go-to space for entertainment, energy, and endless banter."
           </p>
+          {isAuthenticated && (
+            <div className="mt-4">
+              <Button 
+                variant="outline" 
+                className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30"
+                onClick={logout}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Role Selection Cards */}
@@ -67,9 +79,9 @@ export default function HomePage() {
                 onClick={() => router.push('/register?role=participant')}>
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <Gamepad2 className="w-12 h-12 text-orange-500" />
+                <Gamepad2 className="w-12 h-12 text-peach-500" />
               </div>
-              <CardTitle className="text-orange-600">Participant</CardTitle>
+              <CardTitle className="text-peach-600">Participant</CardTitle>
               <CardDescription>
                 Join as a player and answer questions to win!
               </CardDescription>
@@ -85,15 +97,15 @@ export default function HomePage() {
                 onClick={() => router.push('/register?role=audience')}>
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
-                <Users className="w-12 h-12 text-teal-blue-500" />
+                <Users className="w-12 h-12 text-teal-500" />
               </div>
-              <CardTitle className="text-teal-blue-600">Audience</CardTitle>
+              <CardTitle className="text-teal-600">Audience</CardTitle>
               <CardDescription>
                 Watch the game and cheer for your favorite players!
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="teal-blue" className="w-full">
+              <Button variant="teal-blue" className="w-full text-black">
                 Register as Audience
               </Button>
             </CardContent>
@@ -104,7 +116,7 @@ export default function HomePage() {
         <div className="text-center mb-8">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 max-w-md mx-auto border border-white/20">
             <div className="flex justify-center mb-4">
-              <Trophy className="w-12 h-12 text-dark-red-500" />
+              <Trophy className="w-12 h-12 text-dark-blue-500" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">Game Master</h3>
             <p className="text-white/80 mb-4">

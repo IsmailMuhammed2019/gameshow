@@ -67,6 +67,16 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         error: any;
         result?: undefined;
     }>;
+    handleRevealAnswer(client: Socket, data: {
+        questionId: string;
+        gameSessionId: string;
+    }): Promise<{
+        success: boolean;
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+    }>;
     handleEndGame(client: Socket, data: {
         gameSessionId: string;
         gameMasterId: string;

@@ -11,6 +11,7 @@ import { LogOut, Trophy, Users } from 'lucide-react';
 import io from 'socket.io-client';
 import Celebration from '@/components/Celebration';
 import SoundEffects from '@/components/SoundEffects';
+import Leaderboard from '@/components/Leaderboard';
 
 export default function ParticipantPage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function ParticipantPage() {
     isAnswering,
     answerResult,
     winners,
+    participants,
     setGameSession,
     setCurrentQuestion,
     setAnswering,
@@ -81,23 +83,42 @@ export default function ParticipantPage() {
       setShowCelebration(null);
     });
 
-    newSocket.on('answer_result', (result: any) => {
-      setAnswerResult(result);
+    newSocket.on('answer_submitted', (result: any) => {
       setAnswering(false);
       setHasAnswered(true);
-      
-      // Update user score if provided in the result
-      if (result.updatedUser) {
-        // Update the user in the auth store with new score
-        const { setUser } = useAuthStore.getState();
-        setUser({
-          ...user,
-          score: Number(result.updatedUser.score),
+      // Show waiting message instead of immediate result
+      setAnswerResult({
+        submitted: true,
+        message: result.message,
+        selectedOption: result.selectedOption,
+      });
+    });
+
+    newSocket.on('answer_revealed', (result: any) => {
+      // Find the user's answer in the revealed results
+      const userAnswer = result.answers.find((answer: any) => answer.userId === user.id);
+      if (userAnswer) {
+        setAnswerResult({
+          isCorrect: userAnswer.isCorrect,
+          correctAnswer: result.correctAnswer,
+          selectedOption: userAnswer.selectedOption,
+          submitted: true,
         });
+        
+        // Update user score if correct
+        if (userAnswer.isCorrect) {
+          const { setUser } = useAuthStore.getState();
+          setUser({
+            ...user,
+            score: Number(user.score) + 1,
+          });
+        }
+        
+        // Trigger celebration animation AFTER a delay to show the answer first
+        setTimeout(() => {
+          setShowCelebration(userAnswer.isCorrect);
+        }, 2000); // 2 second delay after answer is revealed
       }
-      
-      // Trigger celebration animation
-      setShowCelebration(result.isCorrect);
     });
 
     newSocket.on('winner_announced', (winner: any) => {
@@ -186,9 +207,9 @@ export default function ParticipantPage() {
           <div className="flex items-center space-x-6">
             <div className="relative">
               <img 
-                src="/bantefun.jpg" 
+                src="/logo.png" 
                 alt="Logo" 
-                className="w-16 h-16 rounded-full border-4 border-orange-500 shadow-2xl"
+                className="w-48 h-24 shadow-2xl"
               />
               <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
@@ -276,31 +297,44 @@ export default function ParticipantPage() {
                   
                   {answerResult && (
                     <div className={`mt-6 p-6 rounded-lg text-center ${
-                      answerResult.isCorrect 
-                        ? 'bg-green-100 border-2 border-green-300' 
-                        : 'bg-red-100 border-2 border-red-300'
+                      answerResult.submitted && answerResult.isCorrect !== undefined
+                        ? answerResult.isCorrect 
+                          ? 'bg-green-100 border-2 border-green-300' 
+                          : 'bg-red-100 border-2 border-red-300'
+                        : 'bg-blue-100 border-2 border-blue-300'
                     }`}>
-                      <div className="text-6xl mb-4">
-                        {answerResult.isCorrect ? '🎉' : '😢'}
-                      </div>
-                      <p className={`text-2xl font-bold ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                        {answerResult.isCorrect ? '🎊 EXCELLENT! 🎊' : '❌ Not Quite Right'}
-                      </p>
-                      {!answerResult.isCorrect && (
-                        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-gray-600">
-                            The correct answer was: <span className="font-bold text-lg">{String.fromCharCode(65 + answerResult.correctAnswer)}</span>
+                      {answerResult.submitted && answerResult.isCorrect !== undefined ? (
+                        <>
+                          <div className="text-6xl mb-4">
+                            {answerResult.isCorrect ? '🎉' : '❌'}
+                          </div>
+                          <p className={`text-2xl font-bold ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                            {answerResult.isCorrect ? '🎊 EXCELLENT! 🎊' : '❌ Not Quite Right'}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">Don't worry, you can still win!</p>
-                        </div>
-                      )}
-                      {answerResult.isCorrect && (
-                        <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                          <p className="text-lg text-green-700 font-bold">
-                            🏆 +1 POINT! 🏆
+                          {!answerResult.isCorrect && (
+                            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                              <p className="text-sm text-gray-600">
+                                The correct answer was: <span className="font-bold text-lg">{String.fromCharCode(65 + (answerResult.correctAnswer || 0))}</span>
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">Don't worry, you can still win!</p>
+                            </div>
+                          )}
+                          {answerResult.isCorrect && (
+                            <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                              <p className="text-lg text-green-700 font-bold">
+                                🏆 +1 POINT! 🏆
+                              </p>
+                              <p className="text-sm text-green-600 mt-1">You're on fire! Keep it up! 🔥</p>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-4xl mb-4">⏳</div>
+                          <p className="text-xl font-bold text-blue-700">
+                            {answerResult.message || 'Answer submitted! Waiting for game master to reveal results...'}
                           </p>
-                          <p className="text-sm text-green-600 mt-1">You're on fire! Keep it up! 🔥</p>
-                        </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -410,6 +444,13 @@ export default function ParticipantPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Leaderboard */}
+          <Leaderboard 
+            participants={participants} 
+            currentUserId={user.id}
+            showTop={5}
+          />
         </div>
       </div>
 

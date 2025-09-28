@@ -14,6 +14,12 @@ enum UserRole {
   PARTICIPANT
   AUDIENCE
   GAME_MASTER
+  GENERAL_ADMIN
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  YES_NO
 }
 
 enum GameStatus {
@@ -43,15 +49,16 @@ model User {
 }
 
 model Question {
-  id            String   @id @default(cuid())
+  id            String       @id @default(cuid())
   question      String
   options       String[]
   correctAnswer Int
-  difficulty    Int      @default(1)
-  targetRole    UserRole @default(PARTICIPANT) // Which role this question is for
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  difficulty    Int          @default(1)
+  targetRole    UserRole     @default(PARTICIPANT) // Which role this question is for
+  questionType  QuestionType @default(MULTIPLE_CHOICE) // Type of question
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   // Relations
   gameSessions GameSession[]

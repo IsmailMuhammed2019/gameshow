@@ -178,14 +178,10 @@ let GameGateway = class GameGateway {
             const result = await this.gameService.submitAnswer(data.userId, data.questionId, data.gameSessionId, data.selectedOption);
             console.log('Answer result:', result);
             const updatedUser = await this.gameService.getUserById(data.userId);
-            client.emit('answer_result', {
-                isCorrect: result.isCorrect,
-                correctAnswer: result.correctAnswer,
+            client.emit('answer_submitted', {
+                submitted: true,
                 selectedOption: data.selectedOption,
-                updatedUser: {
-                    ...updatedUser,
-                    score: Number(updatedUser.score),
-                },
+                message: 'Answer submitted! Waiting for game master to reveal results...',
             });
             const updatedGameSession = await this.gameService.getGameSession(data.gameSessionId);
             this.server.emit('game_session_updated', updatedGameSession);
@@ -202,6 +198,45 @@ let GameGateway = class GameGateway {
         }
         catch (error) {
             console.error('Error in handleSubmitAnswer:', error);
+            client.emit('error', { message: error.message });
+            return { success: false, error: error.message };
+        }
+    }
+    async handleRevealAnswer(client, data) {
+        try {
+            let user = null;
+            for (const [userId, userData] of this.connectedUsers.entries()) {
+                if (userData.socket.id === client.id) {
+                    user = userData;
+                    break;
+                }
+            }
+            if (!user || user.role !== 'GAME_MASTER') {
+                client.emit('error', { message: 'Only game masters can reveal answers' });
+                return { success: false, error: 'Unauthorized' };
+            }
+            const question = await this.gameService.getQuestionById(data.questionId);
+            if (!question) {
+                client.emit('error', { message: 'Question not found' });
+                return { success: false, error: 'Question not found' };
+            }
+            const answers = await this.gameService.getAnswersForQuestion(data.questionId, data.gameSessionId);
+            this.server.emit('answer_revealed', {
+                questionId: data.questionId,
+                correctAnswer: question.correctAnswer,
+                correctOption: question.options[question.correctAnswer],
+                answers: answers.map(answer => ({
+                    userId: answer.userId,
+                    selectedOption: answer.selectedOption,
+                    isCorrect: answer.isCorrect,
+                    username: answer.user?.username,
+                    role: answer.user?.role,
+                })),
+            });
+            return { success: true };
+        }
+        catch (error) {
+            console.error('Error revealing answer:', error);
             client.emit('error', { message: error.message });
             return { success: false, error: error.message };
         }
@@ -286,6 +321,14 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleSubmitAnswer", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('reveal_answer'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleRevealAnswer", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('end_game'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

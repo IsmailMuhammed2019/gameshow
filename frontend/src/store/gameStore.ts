@@ -6,7 +6,7 @@ interface GameStore extends GameState {
   setGameSession: (session: GameSession) => void;
   setConnectionStatus: (isConnected: boolean) => void;
   setAnswering: (isAnswering: boolean) => void;
-  setAnswerResult: (result: { isCorrect: boolean; correctAnswer: number; selectedOption: number }) => void;
+  setAnswerResult: (result: { isCorrect?: boolean; correctAnswer?: number; selectedOption?: number; submitted?: boolean; message?: string } | undefined) => void;
   addWinner: (winner: Winner) => void;
   clearWinners: () => void;
   setParticipants: (participants: User[]) => void;
@@ -40,7 +40,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ isAnswering });
   },
 
-  setAnswerResult: (result: { isCorrect: boolean; correctAnswer: number; selectedOption: number } | undefined) => {
+  setAnswerResult: (result: { isCorrect?: boolean; correctAnswer?: number; selectedOption?: number; submitted?: boolean; message?: string } | undefined) => {
     set({ answerResult: result });
   },
 

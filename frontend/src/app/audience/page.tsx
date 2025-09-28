@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LogOut, Trophy, Users, Eye } from 'lucide-react';
 import io from 'socket.io-client';
+import Leaderboard from '@/components/Leaderboard';
 
 export default function AudiencePage() {
   const router = useRouter();
@@ -31,7 +32,9 @@ export default function AudiencePage() {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswering, setIsAnswering] = useState(false);
+  const [hasAnswered, setHasAnswered] = useState(false);
   const [answerResult, setAnswerResult] = useState<any>(null);
+  const [audienceWinners, setAudienceWinners] = useState<any[]>([]);
   // Removed screen overlay functionality
 
   useEffect(() => {
@@ -75,6 +78,7 @@ export default function AudiencePage() {
       setSelectedOption(null);
       setAnswerResult(null);
       setIsAnswering(false);
+      setHasAnswered(false);
     });
 
     newSocket.on('winner_announced', (winner: any) => {
@@ -86,9 +90,31 @@ export default function AudiencePage() {
       }, 3000);
     });
 
-    newSocket.on('answer_result', (result: any) => {
-      setAnswerResult(result);
+    newSocket.on('audience_winner', (winner: any) => {
+      setAudienceWinners(prev => [...prev, winner]);
+    });
+
+    newSocket.on('answer_submitted', (result: any) => {
+      setAnswerResult({
+        submitted: true,
+        message: result.message,
+        selectedOption: result.selectedOption,
+      });
       setIsAnswering(false);
+      setHasAnswered(true);
+    });
+
+    newSocket.on('answer_revealed', (result: any) => {
+      // Find the user's answer in the revealed results
+      const userAnswer = result.answers.find((answer: any) => answer.userId === user.id);
+      if (userAnswer) {
+        setAnswerResult({
+          isCorrect: userAnswer.isCorrect,
+          correctAnswer: result.correctAnswer,
+          selectedOption: userAnswer.selectedOption,
+          submitted: true,
+        });
+      }
     });
 
     return () => {
@@ -127,13 +153,17 @@ export default function AudiencePage() {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-4">
           <img 
-            src="/bantefun.jpg" 
+            src="/logo.png" 
             alt="Logo" 
-            className="w-12 h-12 rounded-full border-2 border-white"
+            className="w-48 h-24"
           />
           <div>
-            <h1 className="text-2xl font-bold text-white">Audience</h1>
+            <h1 className="text-2xl font-bold text-white flex items-center">
+              <Eye className="w-6 h-6 mr-2 text-teal-400" />
+              Audience Portal
+            </h1>
             <p className="text-white/80">Welcome, {user.username} (#{user.uniqueNumber})</p>
+            <p className="text-teal-300 text-sm">👥 Participate alongside the main game!</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -155,13 +185,18 @@ export default function AudiencePage() {
             <CardHeader>
               <CardTitle className="text-teal-blue-600 flex items-center">
                 <Eye className="w-5 h-5 mr-2" />
-                Current Question
+                Audience Question
               </CardTitle>
               {gameSession && (
                 <CardDescription>
-                  {currentQuestion ? `Question ${gameSession.currentQuestionIndex || 1}` : 'Waiting for question...'}
+                  {currentQuestion ? `Audience Question ${gameSession.currentQuestionIndex || 1}` : 'Waiting for audience question...'}
                 </CardDescription>
               )}
+              <div className="mt-2 p-2 bg-teal-50 rounded-lg border border-teal-200">
+                <p className="text-sm text-teal-700 font-medium">
+                  👥 This question is specifically for audience members
+                </p>
+              </div>
             </CardHeader>
             <CardContent>
               {currentQuestion ? (
@@ -200,16 +235,43 @@ export default function AudiencePage() {
                   </div>
                   
                   {answerResult && (
-                    <div className="mt-6 p-4 rounded-lg bg-gray-100">
-                      <p className={`font-medium ${answerResult.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                        {answerResult.isCorrect ? '🎉 Correct!' : '❌ Incorrect!'}
-                      </p>
-                      <p className="text-gray-600 mt-2">
-                        The correct answer was: {String.fromCharCode(65 + answerResult.correctAnswer)}. {currentQuestion.options && currentQuestion.options[answerResult.correctAnswer]}
-                      </p>
-                      <p className="text-sm text-blue-600 mt-2 font-medium">
-                        👀 As an audience member, you don't earn points but can still participate!
-                      </p>
+                    <div className={`mt-6 p-6 rounded-lg text-center ${
+                      answerResult.submitted && answerResult.isCorrect !== undefined
+                        ? answerResult.isCorrect
+                          ? 'bg-green-100 border-2 border-green-300'
+                          : 'bg-red-100 border-2 border-red-300'
+                        : 'bg-blue-100 border-2 border-blue-300'
+                    }`}>
+                      {answerResult.submitted && answerResult.isCorrect !== undefined ? (
+                        <>
+                          <div className="text-6xl mb-4">
+                            {answerResult.isCorrect ? '🎉' : '❌'}
+                          </div>
+                          <p className={`text-2xl font-bold ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                            {answerResult.isCorrect ? '🎊 EXCELLENT! 🎊' : '❌ Not Quite Right'}
+                          </p>
+                          {!answerResult.isCorrect && (
+                            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                              <p className="text-sm text-gray-600">
+                                The correct answer was: <span className="font-bold text-lg">{String.fromCharCode(65 + (answerResult.correctAnswer || 0))}</span>
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">Keep participating!</p>
+                            </div>
+                          )}
+                          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm text-blue-700 font-medium">
+                              👀 As an audience member, you don't earn points but can still participate!
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-4xl mb-4">⏳</div>
+                          <p className="text-xl font-bold text-blue-700">
+                            {answerResult.message || 'Answer submitted! Waiting for game master to reveal results...'}
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -224,28 +286,77 @@ export default function AudiencePage() {
           </Card>
         </div>
 
-        {/* Recent Winners */}
+        {/* Audience Sidebar */}
         <div className="space-y-6">
+          {/* Audience Leaderboard */}
+          <Leaderboard
+            participants={audience}
+            currentUserId={user.id}
+            showTop={5}
+            className="mb-6"
+          />
+
+          {/* Recent Audience Winners */}
           <Card className="question-card">
             <CardHeader>
               <CardTitle className="text-teal-blue-600 flex items-center">
                 <Trophy className="w-5 h-5 mr-2" />
-                Recent Winners
+                Recent Audience Winners
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {winners.length > 0 ? (
+              {audienceWinners.length > 0 ? (
                 <div className="space-y-2">
-                  {winners.slice(-5).map((winner, index) => (
-                    <div key={index} className="p-2 bg-yellow-50 rounded-lg">
-                      <p className="font-medium text-yellow-700">{winner.username}</p>
-                      <p className="text-sm text-yellow-600">#{winner.uniqueNumber}</p>
+                  {audienceWinners.slice(-5).map((winner, index) => (
+                    <div key={index} className="p-3 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-200">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium text-teal-700">{winner.username}</p>
+                          <p className="text-sm text-teal-600">#{winner.uniqueNumber}</p>
+                          <p className="text-xs text-gray-500">Audience Member</p>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">No winners yet</p>
+                <div className="text-center py-6">
+                  <Users className="w-12 h-12 text-teal-500 mx-auto mb-3" />
+                  <p className="text-gray-500">No audience winners yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Audience members don't earn points but can still participate!</p>
+                </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Audience Stats */}
+          <Card className="question-card">
+            <CardHeader>
+              <CardTitle className="text-teal-blue-600 flex items-center">
+                <Eye className="w-5 h-5 mr-2" />
+                Audience Stats
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <span className="text-blue-700 font-medium">Total Audience</span>
+                  <span className="text-blue-800 font-bold text-lg">{audience.length}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-teal-50 rounded-lg">
+                  <span className="text-teal-700 font-medium">Active Now</span>
+                  <span className="text-teal-800 font-bold text-lg">{audience.filter(a => a.isActive).length}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <span className="text-green-700 font-medium">Questions Answered</span>
+                  <span className="text-green-800 font-bold text-lg">
+                    {audience.reduce((total, a) => total + (a.score || 0), 0)}
+                  </span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

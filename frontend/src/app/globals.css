@@ -58,9 +58,9 @@
   }
 }
 
-/* Custom game styles */
+/* Custom game styles - New Color Palette */
 .game-container {
-  background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #14b8a6 100%);
+  background: linear-gradient(135deg, #00378a 0%, #118be0 50%, #14c4ec 100%);
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
@@ -84,9 +84,9 @@
 
 /* Game Show Header */
 .game-show-header {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  border-bottom: 4px solid #f97316;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #00378a 0%, #118be0 50%, #14c4ec 100%);
+  border-bottom: 4px solid #cfb86f;
+  box-shadow: 0 4px 20px rgba(0, 55, 138, 0.3);
   position: relative;
   z-index: 10;
 }
@@ -127,7 +127,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #f97316, #dc2626, #14b8a6, #f97316);
+  background: linear-gradient(90deg, #00378a, #118be0, #14c4ec, #cfb86f, #dd6e66, #f6c750, #00378a);
   background-size: 200% 100%;
   animation: gradient-flow 3s ease-in-out infinite;
 }

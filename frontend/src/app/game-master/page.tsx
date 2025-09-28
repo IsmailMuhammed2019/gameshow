@@ -7,9 +7,10 @@ import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Play, Pause, Square, Users, Trophy, Settings, LogOut, RotateCcw } from 'lucide-react';
+import { Play, Pause, Square, Users, Trophy, Settings, LogOut, RotateCcw, Eye } from 'lucide-react';
 import io from 'socket.io-client';
 import api from '@/lib/api';
+import Leaderboard from '@/components/Leaderboard';
 
 export default function GameMasterPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function GameMasterPage() {
   const socketRef = useRef<any>(null);
   const userRef = useRef(user);
   const gameSessionRef = useRef(gameSession);
+  const currentQuestionRef = useRef(currentQuestion);
 
   // Update refs when values change
   useEffect(() => {
@@ -48,6 +50,10 @@ export default function GameMasterPage() {
   useEffect(() => {
     gameSessionRef.current = gameSession;
   }, [gameSession]);
+
+  useEffect(() => {
+    currentQuestionRef.current = currentQuestion;
+  }, [currentQuestion]);
 
   const nextQuestion = useCallback(async () => {
     setIsLoadingQuestion(true);
@@ -108,6 +114,25 @@ export default function GameMasterPage() {
       }
     } catch (error) {
       console.error('Error clearing scores:', error);
+    }
+  }, []);
+
+  const revealAnswer = useCallback(async () => {
+    try {
+      console.log('Revealing answer...');
+      const currentSocket = socketRef.current;
+      const currentGameSession = gameSessionRef.current;
+      const currentQuestionData = currentQuestionRef.current;
+      
+      if (currentSocket && currentGameSession && currentQuestionData) {
+        currentSocket.emit('reveal_answer', {
+          questionId: currentQuestionData.id,
+          gameSessionId: currentGameSession.id,
+        });
+        console.log('Reveal answer event emitted');
+      }
+    } catch (error) {
+      console.error('Error revealing answer:', error);
     }
   }, []);
 
@@ -269,9 +294,9 @@ export default function GameMasterPage() {
           <div className="flex items-center space-x-6">
             <div className="relative">
           <img
-            src="/bantefun.jpg"
+            src="/logo.png"
             alt="Logo"
-                className="w-16 h-16 rounded-full border-4 border-orange-500 shadow-2xl"
+                className="w-48 h-24 shadow-2xl"
           />
               <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
@@ -382,6 +407,15 @@ export default function GameMasterPage() {
                 )}
               </Button>
             </div>
+            <Button
+              variant="teal-blue"
+              onClick={revealAnswer}
+              disabled={!isConnected || !gameSession || !currentQuestion}
+              className="w-full h-16 text-lg font-bold bg-gradient-to-r from-teal-500 to-light-blue-500 hover:from-teal-600 hover:to-light-blue-600 shadow-lg"
+            >
+              <Eye className="w-6 h-6 mr-3" />
+              👁️ REVEAL ANSWER
+            </Button>
             <Button
               variant="dark-red"
               onClick={endGame}
@@ -599,6 +633,13 @@ export default function GameMasterPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Leaderboard */}
+        <Leaderboard 
+          participants={participants} 
+          showTop={10}
+          className="lg:col-span-3"
+        />
       </div>
 
       {/* Winner Modal */}

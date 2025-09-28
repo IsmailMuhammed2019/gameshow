@@ -43,9 +43,9 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img 
-              src="/bantefun.jpg" 
+              src="/logo.png" 
               alt="Logo" 
-              className="w-16 h-16 rounded-full border-2 border-orange-500"
+              className="w-48 h-24"
             />
           </div>
           <CardTitle className="text-2xl text-orange-600">Login</CardTitle>

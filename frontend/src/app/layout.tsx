@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'Fun & Bante',
   description: 'Your go-to space for entertainment, energy, and endless banter.',
   manifest: '/manifest.json',
-  themeColor: '#f97316',
+  themeColor: '#00378a',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   appleWebApp: {
     capable: true,
@@ -16,8 +16,8 @@ export const metadata: Metadata = {
     title: 'Fun & Bante',
   },
   icons: {
-    icon: '/favicon.jpg',
-    apple: '/bantefun.jpg',
+    icon: '/logo.png',
+    apple: '/logo.png',
   },
 }
 
@@ -30,7 +30,9 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#f97316" />
+        <link rel="icon" href="/logo.png" type="image/png" />
+        <link rel="shortcut icon" href="/logo.png" type="image/png" />
+        <meta name="theme-color" content="#00378a" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Fun & Bante" />

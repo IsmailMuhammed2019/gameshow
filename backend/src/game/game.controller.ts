@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch } from '@nestjs/common';
 import { GameService } from './game.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
@@ -19,6 +19,16 @@ export class GameController {
     return this.gameService.getAllQuestions();
   }
 
+  @Get('questions/participant')
+  getParticipantQuestions() {
+    return this.gameService.getActiveQuestions('PARTICIPANT');
+  }
+
+  @Get('questions/audience')
+  getAudienceQuestions() {
+    return this.gameService.getActiveQuestions('AUDIENCE');
+  }
+
   @Get('questions/active')
   getActiveQuestions() {
     return this.gameService.getActiveQuestions();
@@ -27,20 +37,12 @@ export class GameController {
   @Get('questions/debug')
   async debugQuestions() {
     const allQuestions = await this.gameService.getAllQuestions();
-    const participantQuestions = await this.gameService.getActiveQuestions('PARTICIPANT');
-    const audienceQuestions = await this.gameService.getActiveQuestions('AUDIENCE');
-    
-    return {
-      total: allQuestions.length,
-      participant: participantQuestions.length,
-      audience: audienceQuestions.length,
-      allQuestions: allQuestions.map(q => ({
-        id: q.id,
-        question: q.question,
-        targetRole: q.targetRole,
-        isActive: q.isActive
-      }))
-    };
+    return allQuestions;
+  }
+
+  @Patch('questions/:id')
+  async updateQuestion(@Param('id') id: string, @Body() updateData: { isActive?: boolean }) {
+    return this.gameService.updateQuestion(id, updateData);
   }
 
   @Post('start')

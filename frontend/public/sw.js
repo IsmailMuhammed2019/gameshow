@@ -5,8 +5,7 @@ const urlsToCache = [
   '/static/js/bundle.js',
   '/static/css/main.css',
   '/manifest.json',
-  '/favicon.jpg',
-  '/bantefun.jpg'
+  '/logo.png'
 ];
 
 self.addEventListener('install', (event) => {

@@ -283,4 +283,29 @@ export class GameService {
       clearedCount: result.count,
     };
   }
+
+  async updateQuestion(questionId: string, updateData: { isActive?: boolean }) {
+    return this.prisma.question.update({
+      where: { id: questionId },
+      data: updateData,
+    });
+  }
+
+  async getQuestionById(questionId: string) {
+    return this.prisma.question.findUnique({
+      where: { id: questionId },
+    });
+  }
+
+  async getAnswersForQuestion(questionId: string, gameSessionId: string) {
+    return this.prisma.answer.findMany({
+      where: {
+        questionId,
+        gameSessionId,
+      },
+      include: {
+        user: true,
+      },
+    });
+  }
 }

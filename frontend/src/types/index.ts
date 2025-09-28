@@ -2,7 +2,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  role: 'PARTICIPANT' | 'AUDIENCE' | 'GAME_MASTER';
+  role: 'PARTICIPANT' | 'AUDIENCE' | 'GAME_MASTER' | 'GENERAL_ADMIN';
   uniqueNumber: string;
   isActive: boolean;
   score: number;
@@ -15,6 +15,7 @@ export interface Question {
   options: string[];
   correctAnswer: number;
   difficulty: number;
+  questionType: 'MULTIPLE_CHOICE' | 'YES_NO';
   isActive: boolean;
   createdAt: string;
 }
@@ -58,9 +59,11 @@ export interface GameState {
   isConnected: boolean;
   isAnswering: boolean;
   answerResult?: {
-    isCorrect: boolean;
-    correctAnswer: number;
-    selectedOption: number;
+    isCorrect?: boolean;
+    correctAnswer?: number;
+    selectedOption?: number;
+    submitted?: boolean;
+    message?: string;
   };
   winners: Winner[];
   participants: User[];

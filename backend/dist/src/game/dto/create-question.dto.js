@@ -20,7 +20,7 @@ __decorate([
 ], CreateQuestionDto.prototype, "question", void 0);
 __decorate([
     (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ArrayMinSize)(4),
+    (0, class_validator_1.ArrayMinSize)(2),
     (0, class_validator_1.ArrayMaxSize)(4),
     (0, class_validator_1.IsString)({ each: true }),
     __metadata("design:type", Array)
@@ -37,4 +37,9 @@ __decorate([
     (0, class_validator_1.Max)(15),
     __metadata("design:type", Number)
 ], CreateQuestionDto.prototype, "difficulty", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(['MULTIPLE_CHOICE', 'YES_NO']),
+    __metadata("design:type", String)
+], CreateQuestionDto.prototype, "questionType", void 0);
 //# sourceMappingURL=create-question.dto.js.map

@@ -117,6 +117,24 @@ async function main() {
 
   console.log('👑 Created admin user:', adminUser.username);
 
+  // Create general admin user
+  const generalAdminPassword = await bcrypt.hash('admin456', 10);
+  const generalAdminUser = await prisma.user.upsert({
+    where: { username: 'general_admin' },
+    update: {},
+    create: {
+      username: 'general_admin',
+      email: 'general@millionairegame.com',
+      password: generalAdminPassword,
+      role: 'GENERAL_ADMIN',
+      uniqueNumber: 'GA001',
+      isActive: true,
+      score: 0,
+    },
+  });
+
+  console.log('👑 Created general admin user:', generalAdminUser.username);
+
   // Create sample questions for participants
   for (const questionData of sampleQuestions) {
     await prisma.question.create({
@@ -262,13 +280,66 @@ async function main() {
     });
   }
 
+  // Create Yes/No questions for participants
+  const yesNoQuestions = [
+    {
+      question: "Is the sky blue?",
+      options: ["Yes", "No"],
+      correctAnswer: 0,
+      difficulty: 1,
+      questionType: 'YES_NO' as const,
+    },
+    {
+      question: "Do birds fly?",
+      options: ["Yes", "No"],
+      correctAnswer: 0,
+      difficulty: 1,
+      questionType: 'YES_NO' as const,
+    },
+    {
+      question: "Is water wet?",
+      options: ["Yes", "No"],
+      correctAnswer: 0,
+      difficulty: 2,
+      questionType: 'YES_NO' as const,
+    },
+    {
+      question: "Do fish live on land?",
+      options: ["Yes", "No"],
+      correctAnswer: 1,
+      difficulty: 1,
+      questionType: 'YES_NO' as const,
+    },
+    {
+      question: "Is the sun a star?",
+      options: ["Yes", "No"],
+      correctAnswer: 0,
+      difficulty: 3,
+      questionType: 'YES_NO' as const,
+    },
+  ];
+
+  for (const questionData of yesNoQuestions) {
+    await prisma.question.create({
+      data: {
+        ...questionData,
+        targetRole: 'PARTICIPANT',
+        isActive: true,
+      },
+    });
+  }
+
   console.log('✅ Database seeded successfully!');
   console.log(`📝 Created ${sampleQuestions.length} participant questions`);
   console.log(`📝 Created ${audienceQuestions.length} audience questions`);
+  console.log(`📝 Created ${yesNoQuestions.length} Yes/No questions`);
   console.log('🔑 Admin credentials:');
   console.log('   Username: admin');
   console.log('   Password: admin123');
   console.log('   Role: Game Master');
+  console.log('   Username: general_admin');
+  console.log('   Password: admin456');
+  console.log('   Role: General Admin');
 }
 
 main()
