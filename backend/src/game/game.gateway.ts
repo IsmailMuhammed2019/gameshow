@@ -14,7 +14,12 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:3000', 'https://localhost:3000'],
+    origin: [
+      'http://localhost:3000', 
+      'https://localhost:3000',
+      'http://94.237.53.19:3000',
+      'https://94.237.53.19:3000'
+    ],
     credentials: true,
   },
 })
@@ -266,15 +271,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const updatedGameSession = await this.gameService.getGameSession(data.gameSessionId);
       this.server.emit('game_session_updated', updatedGameSession);
 
-      // If correct and user is a participant, show winner to all participants and game master
-      if (result.isCorrect && updatedUser.role === 'PARTICIPANT') {
-        this.server.emit('winner_announced', {
-          userId: data.userId,
-          username: updatedUser.username,
-          uniqueNumber: updatedUser.uniqueNumber,
-          role: updatedUser.role,
-        });
-      }
+      // Don't announce winners immediately - wait for game master to reveal answers
+      // Winners will be announced when the game master reveals the answer
 
       // Update user list to reflect score changes
       this.broadcastUserList();
@@ -330,6 +328,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           role: answer.user?.role,
         })),
       });
+
+      // Announce winners for correct answers (only for participants)
+      const correctAnswers = answers.filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT');
+      for (const correctAnswer of correctAnswers) {
+        this.server.emit('winner_announced', {
+          userId: correctAnswer.userId,
+          username: correctAnswer.user?.username,
+          uniqueNumber: correctAnswer.user?.uniqueNumber,
+          role: correctAnswer.user?.role,
+        });
+      }
 
       return { success: true };
     } catch (error) {

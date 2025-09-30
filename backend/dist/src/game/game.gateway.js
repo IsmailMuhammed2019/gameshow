@@ -185,14 +185,6 @@ let GameGateway = class GameGateway {
             });
             const updatedGameSession = await this.gameService.getGameSession(data.gameSessionId);
             this.server.emit('game_session_updated', updatedGameSession);
-            if (result.isCorrect && updatedUser.role === 'PARTICIPANT') {
-                this.server.emit('winner_announced', {
-                    userId: data.userId,
-                    username: updatedUser.username,
-                    uniqueNumber: updatedUser.uniqueNumber,
-                    role: updatedUser.role,
-                });
-            }
             this.broadcastUserList();
             return { success: true, result };
         }
@@ -233,6 +225,15 @@ let GameGateway = class GameGateway {
                     role: answer.user?.role,
                 })),
             });
+            const correctAnswers = answers.filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT');
+            for (const correctAnswer of correctAnswers) {
+                this.server.emit('winner_announced', {
+                    userId: correctAnswer.userId,
+                    username: correctAnswer.user?.username,
+                    uniqueNumber: correctAnswer.user?.uniqueNumber,
+                    role: correctAnswer.user?.role,
+                });
+            }
             return { success: true };
         }
         catch (error) {
@@ -347,7 +348,12 @@ __decorate([
 exports.GameGateway = GameGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
-            origin: ['http://localhost:3000', 'https://localhost:3000'],
+            origin: [
+                'http://localhost:3000',
+                'https://localhost:3000',
+                'http://94.237.53.19:3000',
+                'https://94.237.53.19:3000'
+            ],
             credentials: true,
         },
     }),

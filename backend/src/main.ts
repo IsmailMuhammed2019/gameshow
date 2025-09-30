@@ -7,7 +7,12 @@ async function bootstrap() {
   
   // Enable CORS for frontend communication
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://localhost:3000'],
+    origin: [
+      'http://localhost:3000', 
+      'https://localhost:3000',
+      'http://94.237.53.19:3000',
+      'https://94.237.53.19:3000'
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],

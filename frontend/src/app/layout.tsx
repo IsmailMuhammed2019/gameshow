@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Fun & Bante',
+  title: 'Fun & Banter',
   description: 'Your go-to space for entertainment, energy, and endless banter.',
   manifest: '/manifest.json',
   themeColor: '#00378a',
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Fun & Bante',
+    title: 'Fun & Banter',
   },
   icons: {
     icon: '/logo.png',
@@ -35,7 +35,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#00378a" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Fun & Bante" />
+        <meta name="apple-mobile-web-app-title" content="Fun & Banter" />
       </head>
       <body className={inter.className}>
         <div className="game-container">

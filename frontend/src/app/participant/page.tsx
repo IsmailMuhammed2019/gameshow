@@ -47,7 +47,7 @@ export default function ParticipantPage() {
     }
 
     // Initialize socket connection
-    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+    const newSocket = io('http://94.237.53.19:3001', {
       transports: ['polling', 'websocket'],
       timeout: 10000,
       forceNew: true,
@@ -89,8 +89,9 @@ export default function ParticipantPage() {
       // Show waiting message instead of immediate result
       setAnswerResult({
         submitted: true,
-        message: result.message,
+        message: 'Answer submitted! Waiting for game master to reveal results...',
         selectedOption: result.selectedOption,
+        isCorrect: undefined, // Don't show correct/incorrect yet
       });
     });
 
@@ -334,6 +335,11 @@ export default function ParticipantPage() {
                           <p className="text-xl font-bold text-blue-700">
                             {answerResult.message || 'Answer submitted! Waiting for game master to reveal results...'}
                           </p>
+                          <div className="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                            <p className="text-sm text-orange-700 font-medium">
+                              🎯 Your answer has been recorded! The game master will reveal the results soon.
+                            </p>
+                          </div>
                         </>
                       )}
                     </div>

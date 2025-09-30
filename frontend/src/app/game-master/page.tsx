@@ -153,7 +153,7 @@ export default function GameMasterPage() {
       console.log('Attempting to connect to WebSocket...');
       
       // Initialize socket connection
-      const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+      const newSocket = io('http://94.237.53.19:3001', {
         transports: ['polling', 'websocket'],
         timeout: 10000,
         forceNew: true,

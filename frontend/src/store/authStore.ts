@@ -9,6 +9,8 @@ interface AuthStore extends AuthState {
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
+  isInitialized: boolean;
+  initialize: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -18,6 +20,7 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitialized: false,
 
       login: async (username: string, password: string) => {
         set({ isLoading: true });
@@ -31,6 +34,10 @@ export const useAuthStore = create<AuthStore>()(
             isAuthenticated: true,
             isLoading: false,
           });
+          
+          // Also store in localStorage for immediate access
+          localStorage.setItem('token', access_token);
+          localStorage.setItem('user', JSON.stringify(user));
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -63,6 +70,7 @@ export const useAuthStore = create<AuthStore>()(
         });
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage');
       },
 
       setUser: (user: User) => {
@@ -71,6 +79,10 @@ export const useAuthStore = create<AuthStore>()(
 
       setToken: (token: string) => {
         set({ token });
+      },
+
+      initialize: () => {
+        set({ isInitialized: true });
       },
     }),
     {

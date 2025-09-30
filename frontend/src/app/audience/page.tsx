@@ -44,7 +44,7 @@ export default function AudiencePage() {
     }
 
     // Initialize socket connection
-    const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+    const newSocket = io('http://94.237.53.19:3001', {
       transports: ['polling', 'websocket'],
       timeout: 10000,
       forceNew: true,
@@ -97,8 +97,9 @@ export default function AudiencePage() {
     newSocket.on('answer_submitted', (result: any) => {
       setAnswerResult({
         submitted: true,
-        message: result.message,
+        message: 'Answer submitted! Waiting for game master to reveal results...',
         selectedOption: result.selectedOption,
+        isCorrect: undefined, // Don't show correct/incorrect yet
       });
       setIsAnswering(false);
       setHasAnswered(true);

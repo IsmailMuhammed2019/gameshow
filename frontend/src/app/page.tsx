@@ -9,14 +9,23 @@ import { Trophy, Users, Gamepad2, LogOut } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user, logout, isInitialized, initialize } = useAuthStore();
 
   useEffect(() => {
+    // Initialize the store on first load
+    if (!isInitialized) {
+      initialize();
+      return;
+    }
+
     if (isAuthenticated && user) {
       // Redirect based on user role
       switch (user.role) {
         case 'GAME_MASTER':
           router.push('/game-master');
+          break;
+        case 'GENERAL_ADMIN':
+          router.push('/general-admin');
           break;
         case 'PARTICIPANT':
           router.push('/participant');
@@ -28,9 +37,9 @@ export default function HomePage() {
           router.push('/login');
       }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isInitialized, initialize]);
 
-  if (isAuthenticated) {
+  if (!isInitialized || (isAuthenticated && user)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -54,7 +63,7 @@ export default function HomePage() {
             />
           </div>
           <h1 className="text-5xl font-bold text-white mb-4 drop-shadow-lg">
-             FUN & BANTE
+             FUN & BANTER
           </h1>
           <p className="text-xl text-white/90 drop-shadow">
           "Your go-to space for entertainment, energy, and endless banter."

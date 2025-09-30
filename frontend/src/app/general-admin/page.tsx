@@ -22,7 +22,7 @@ interface Question {
 }
 
 export default function GeneralAdminPage() {
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, isInitialized, initialize } = useAuthStore();
   const router = useRouter();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [participantQuestions, setParticipantQuestions] = useState<Question[]>([]);
@@ -40,12 +40,18 @@ export default function GeneralAdminPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
+    // Initialize the store on first load
+    if (!isInitialized) {
+      initialize();
+      return;
+    }
+
     if (!isAuthenticated || user?.role !== 'GENERAL_ADMIN') {
       router.push('/login');
       return;
     }
     fetchQuestions();
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isInitialized, initialize]);
 
   const fetchQuestions = async () => {
     try {
