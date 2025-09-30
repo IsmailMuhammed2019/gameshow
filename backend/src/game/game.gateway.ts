@@ -28,6 +28,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private connectedUsers = new Map<string, { socket: Socket; userId: string; role: string }>();
+  private questionTimer: NodeJS.Timeout | null = null;
+  private currentQuestionTimeLeft: number = 0;
+  private questionTimeLimit: number = 10; // 10 seconds per question
 
   constructor(private gameService: GameService) {
     // Broadcast user list every 30 seconds to keep it updated
@@ -141,6 +144,44 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  private startQuestionTimer() {
+    this.currentQuestionTimeLeft = this.questionTimeLimit;
+    
+    this.server.emit('timer_started', {
+      timeLimit: this.questionTimeLimit,
+      timeLeft: this.currentQuestionTimeLeft,
+    });
+
+    this.questionTimer = setInterval(() => {
+      this.currentQuestionTimeLeft--;
+      
+      this.server.emit('timer_update', {
+        timeLeft: this.currentQuestionTimeLeft,
+        timeLimit: this.questionTimeLimit,
+      });
+
+      if (this.currentQuestionTimeLeft <= 0) {
+        this.stopQuestionTimer();
+        this.server.emit('timer_expired', {
+          message: 'Time\'s up! The question has expired.',
+        });
+      }
+    }, 1000);
+  }
+
+  private stopQuestionTimer() {
+    if (this.questionTimer) {
+      clearInterval(this.questionTimer);
+      this.questionTimer = null;
+    }
+    this.currentQuestionTimeLeft = 0;
+  }
+
+  private resetQuestionTimer() {
+    this.stopQuestionTimer();
+    this.currentQuestionTimeLeft = 0;
+  }
+
   @SubscribeMessage('start_game')
   async handleStartGame(
     @ConnectedSocket() client: Socket,
@@ -183,6 +224,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           audienceQuestion,
         });
         console.log('First questions broadcasted to all clients');
+        
+        // Start the timer for the first question
+        this.startQuestionTimer();
       }
       
       return { success: true, gameSession };
@@ -222,6 +266,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         audienceQuestion,
       });
       console.log('Questions broadcasted to all clients');
+      
+      // Start the timer for the new question
+      this.startQuestionTimer();
       
       // Send acknowledgment back to the game master
       client.emit('next_question_response', { 
@@ -265,6 +312,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         submitted: true,
         selectedOption: data.selectedOption,
         message: 'Answer submitted! Waiting for game master to reveal results...',
+      });
+
+      // Notify game master that an answer was submitted
+      this.server.emit('answer_submitted_notification', {
+        userId: data.userId,
+        username: updatedUser.username,
+        uniqueNumber: updatedUser.uniqueNumber,
+        role: updatedUser.role,
+        selectedOption: data.selectedOption,
+        questionId: data.questionId,
+        gameSessionId: data.gameSessionId,
+        timestamp: new Date().toISOString(),
       });
 
       // Update game session state after answer submission
@@ -315,6 +374,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Get all answers for this question
       const answers = await this.gameService.getAnswersForQuestion(data.questionId, data.gameSessionId);
 
+      // Stop the timer when answers are revealed
+      this.stopQuestionTimer();
+      
       // Broadcast the correct answer and results to all users
       this.server.emit('answer_revealed', {
         questionId: data.questionId,

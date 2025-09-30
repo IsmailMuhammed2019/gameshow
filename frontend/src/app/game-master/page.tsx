@@ -35,6 +35,16 @@ export default function GameMasterPage() {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [targetRole, setTargetRole] = useState<'PARTICIPANT' | 'AUDIENCE' | 'BOTH'>('BOTH');
+  const [answerNotifications, setAnswerNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [timeLimit, setTimeLimit] = useState<number>(10);
+  const [timerActive, setTimerActive] = useState<boolean>(false);
+
+  const clearNotifications = () => {
+    setAnswerNotifications([]);
+    setShowNotifications(false);
+  };
   
   // Use refs to avoid dependency issues
   const socketRef = useRef<any>(null);
@@ -259,11 +269,39 @@ export default function GameMasterPage() {
         // This helps track when participants answer
       });
 
+      newSocket.on('answer_submitted_notification', (notification: any) => {
+        console.log('Answer submitted notification:', notification);
+        setAnswerNotifications(prev => [...prev, notification]);
+        setShowNotifications(true);
+        
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => {
+          setShowNotifications(false);
+        }, 5000);
+      });
+
       newSocket.on('scores_cleared', (data: any) => {
         console.log('Scores cleared:', data);
         // Show notification or update UI as needed
         alert(`Scores cleared! ${data.clearedCount} players reset to 0 points.`);
              });
+
+      newSocket.on('timer_started', (timerData: any) => {
+        console.log('Timer started:', timerData);
+        setTimeLimit(timerData.timeLimit);
+        setTimeLeft(timerData.timeLeft);
+        setTimerActive(true);
+      });
+
+      newSocket.on('timer_update', (timerData: any) => {
+        setTimeLeft(timerData.timeLeft);
+      });
+
+      newSocket.on('timer_expired', (data: any) => {
+        console.log('Timer expired:', data);
+        setTimerActive(false);
+        setTimeLeft(0);
+      });
 
       return newSocket;
     };
@@ -310,6 +348,21 @@ export default function GameMasterPage() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            {/* Notification Counter */}
+            {answerNotifications.length > 0 && (
+              <div className="flex items-center space-x-2 bg-orange-500/20 px-3 py-2 rounded-full border border-orange-400">
+                <span className="text-orange-300 font-bold">
+                  🔔 {answerNotifications.length} Answer{answerNotifications.length !== 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={clearNotifications}
+                  className="text-orange-300 hover:text-white text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            
             <div className="flex items-center space-x-3 bg-black/30 px-4 py-2 rounded-full">
               <div className={`w-4 h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
               <span className="text-white font-medium">
@@ -327,6 +380,35 @@ export default function GameMasterPage() {
           </div>
         </div>
       </div>
+
+      {/* Answer Notifications */}
+      {showNotifications && answerNotifications.length > 0 && (
+        <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+          {answerNotifications.slice(-3).map((notification, index) => (
+            <div
+              key={`${notification.userId}-${notification.timestamp}`}
+              className="bg-green-500 text-white p-4 rounded-lg shadow-lg border-l-4 border-green-400 animate-slide-in-right"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="text-2xl">
+                  {notification.role === 'PARTICIPANT' ? '👥' : '👀'}
+                </div>
+                <div>
+                  <p className="font-bold text-lg">
+                    {notification.username} #{notification.uniqueNumber}
+                  </p>
+                  <p className="text-sm opacity-90">
+                    Answered: {String.fromCharCode(65 + notification.selectedOption)}
+                  </p>
+                  <p className="text-xs opacity-75">
+                    {new Date(notification.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Game Controls */}
@@ -377,6 +459,27 @@ export default function GameMasterPage() {
               </div>
             </div>
             
+            {/* Timer Display */}
+            {timerActive && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg border-2 border-white/20">
+                <div className="flex items-center justify-center space-x-3">
+                  <div className="text-3xl">⏰</div>
+                  <div className="text-center">
+                    <div className={`text-4xl font-bold ${timeLeft <= 10 ? 'text-red-300 animate-pulse' : 'text-white'}`}>
+                      {timeLeft}
+                    </div>
+                    <div className="text-sm text-white/80">seconds left</div>
+                  </div>
+                  <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-white transition-all duration-1000 ease-linear"
+                      style={{ width: `${(timeLeft / timeLimit) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4">
               <Button
                 variant="orange"

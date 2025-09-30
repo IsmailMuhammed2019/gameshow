@@ -5,6 +5,9 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private gameService;
     server: Server;
     private connectedUsers;
+    private questionTimer;
+    private currentQuestionTimeLeft;
+    private questionTimeLimit;
     constructor(gameService: GameService);
     handleConnection(client: Socket): Promise<void>;
     handleDisconnect(client: Socket): Promise<void>;
@@ -14,6 +17,9 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         gameSessionId?: string;
     }): Promise<void>;
     private broadcastUserList;
+    private startQuestionTimer;
+    private stopQuestionTimer;
+    private resetQuestionTimer;
     handleStartGame(client: Socket, data: {
         gameMasterId: string;
         targetRole?: string;

@@ -39,6 +39,9 @@ export default function ParticipantPage() {
   // Removed screen overlay functionality
   const [showCelebration, setShowCelebration] = useState<boolean | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [timeLimit, setTimeLimit] = useState<number>(10);
+  const [timerActive, setTimerActive] = useState<boolean>(false);
 
   useEffect(() => {
     if (!user || user.role !== 'PARTICIPANT') {
@@ -81,6 +84,24 @@ export default function ParticipantPage() {
       setAnswerResult(undefined as any);
       setHasAnswered(false);
       setShowCelebration(null);
+    });
+
+    newSocket.on('timer_started', (timerData: any) => {
+      console.log('Timer started:', timerData);
+      setTimeLimit(timerData.timeLimit);
+      setTimeLeft(timerData.timeLeft);
+      setTimerActive(true);
+    });
+
+    newSocket.on('timer_update', (timerData: any) => {
+      setTimeLeft(timerData.timeLeft);
+    });
+
+    newSocket.on('timer_expired', (data: any) => {
+      console.log('Timer expired:', data);
+      setTimerActive(false);
+      setTimeLeft(0);
+      // Optionally show a message that time is up
     });
 
     newSocket.on('answer_submitted', (result: any) => {
@@ -254,6 +275,27 @@ export default function ParticipantPage() {
                 <CardDescription className="text-orange-300">
                   Question {gameSession.currentQuestionIndex} • Difficulty: {currentQuestion?.difficulty || 'N/A'}
                 </CardDescription>
+              )}
+              
+              {/* Timer Display */}
+              {timerActive && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg border-2 border-white/20">
+                  <div className="flex items-center justify-center space-x-3">
+                    <div className="text-3xl">⏰</div>
+                    <div className="text-center">
+                      <div className={`text-4xl font-bold ${timeLeft <= 10 ? 'text-red-300 animate-pulse' : 'text-white'}`}>
+                        {timeLeft}
+                      </div>
+                      <div className="text-sm text-white/80">seconds left</div>
+                    </div>
+                    <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-white transition-all duration-1000 ease-linear"
+                        style={{ width: `${(timeLeft / timeLimit) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
               )}
             </CardHeader>
             <CardContent className="relative z-10">

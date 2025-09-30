@@ -20,6 +20,9 @@ let GameGateway = class GameGateway {
     constructor(gameService) {
         this.gameService = gameService;
         this.connectedUsers = new Map();
+        this.questionTimer = null;
+        this.currentQuestionTimeLeft = 0;
+        this.questionTimeLimit = 10;
         setInterval(() => {
             this.broadcastUserList();
         }, 30000);
@@ -105,6 +108,37 @@ let GameGateway = class GameGateway {
             audience: audienceDetails,
         });
     }
+    startQuestionTimer() {
+        this.currentQuestionTimeLeft = this.questionTimeLimit;
+        this.server.emit('timer_started', {
+            timeLimit: this.questionTimeLimit,
+            timeLeft: this.currentQuestionTimeLeft,
+        });
+        this.questionTimer = setInterval(() => {
+            this.currentQuestionTimeLeft--;
+            this.server.emit('timer_update', {
+                timeLeft: this.currentQuestionTimeLeft,
+                timeLimit: this.questionTimeLimit,
+            });
+            if (this.currentQuestionTimeLeft <= 0) {
+                this.stopQuestionTimer();
+                this.server.emit('timer_expired', {
+                    message: 'Time\'s up! The question has expired.',
+                });
+            }
+        }, 1000);
+    }
+    stopQuestionTimer() {
+        if (this.questionTimer) {
+            clearInterval(this.questionTimer);
+            this.questionTimer = null;
+        }
+        this.currentQuestionTimeLeft = 0;
+    }
+    resetQuestionTimer() {
+        this.stopQuestionTimer();
+        this.currentQuestionTimeLeft = 0;
+    }
     async handleStartGame(client, data) {
         try {
             console.log('Start game requested by:', data.gameMasterId, 'targetRole:', data.targetRole);
@@ -130,6 +164,7 @@ let GameGateway = class GameGateway {
                     audienceQuestion,
                 });
                 console.log('First questions broadcasted to all clients');
+                this.startQuestionTimer();
             }
             return { success: true, gameSession };
         }
@@ -157,6 +192,7 @@ let GameGateway = class GameGateway {
                 audienceQuestion,
             });
             console.log('Questions broadcasted to all clients');
+            this.startQuestionTimer();
             client.emit('next_question_response', {
                 success: true,
                 participantQuestion,
@@ -182,6 +218,16 @@ let GameGateway = class GameGateway {
                 submitted: true,
                 selectedOption: data.selectedOption,
                 message: 'Answer submitted! Waiting for game master to reveal results...',
+            });
+            this.server.emit('answer_submitted_notification', {
+                userId: data.userId,
+                username: updatedUser.username,
+                uniqueNumber: updatedUser.uniqueNumber,
+                role: updatedUser.role,
+                selectedOption: data.selectedOption,
+                questionId: data.questionId,
+                gameSessionId: data.gameSessionId,
+                timestamp: new Date().toISOString(),
             });
             const updatedGameSession = await this.gameService.getGameSession(data.gameSessionId);
             this.server.emit('game_session_updated', updatedGameSession);
@@ -213,6 +259,7 @@ let GameGateway = class GameGateway {
                 return { success: false, error: 'Question not found' };
             }
             const answers = await this.gameService.getAnswersForQuestion(data.questionId, data.gameSessionId);
+            this.stopQuestionTimer();
             this.server.emit('answer_revealed', {
                 questionId: data.questionId,
                 correctAnswer: question.correctAnswer,

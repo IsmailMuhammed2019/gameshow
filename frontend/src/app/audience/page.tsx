@@ -35,6 +35,9 @@ export default function AudiencePage() {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [answerResult, setAnswerResult] = useState<any>(null);
   const [audienceWinners, setAudienceWinners] = useState<any[]>([]);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [timeLimit, setTimeLimit] = useState<number>(10);
+  const [timerActive, setTimerActive] = useState<boolean>(false);
   // Removed screen overlay functionality
 
   useEffect(() => {
@@ -79,6 +82,23 @@ export default function AudiencePage() {
       setAnswerResult(null);
       setIsAnswering(false);
       setHasAnswered(false);
+    });
+
+    newSocket.on('timer_started', (timerData: any) => {
+      console.log('Timer started:', timerData);
+      setTimeLimit(timerData.timeLimit);
+      setTimeLeft(timerData.timeLeft);
+      setTimerActive(true);
+    });
+
+    newSocket.on('timer_update', (timerData: any) => {
+      setTimeLeft(timerData.timeLeft);
+    });
+
+    newSocket.on('timer_expired', (data: any) => {
+      console.log('Timer expired:', data);
+      setTimerActive(false);
+      setTimeLeft(0);
     });
 
     newSocket.on('winner_announced', (winner: any) => {
@@ -198,6 +218,27 @@ export default function AudiencePage() {
                   👥 This question is specifically for audience members
                 </p>
               </div>
+              
+              {/* Timer Display */}
+              {timerActive && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-teal-500 to-blue-500 rounded-lg border-2 border-teal-200">
+                  <div className="flex items-center justify-center space-x-3">
+                    <div className="text-3xl">⏰</div>
+                    <div className="text-center">
+                      <div className={`text-4xl font-bold ${timeLeft <= 10 ? 'text-red-300 animate-pulse' : 'text-white'}`}>
+                        {timeLeft}
+                      </div>
+                      <div className="text-sm text-white/80">seconds left</div>
+                    </div>
+                    <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-white transition-all duration-1000 ease-linear"
+                        style={{ width: `${(timeLeft / timeLimit) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {currentQuestion ? (
