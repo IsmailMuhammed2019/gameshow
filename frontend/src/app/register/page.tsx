@@ -83,9 +83,15 @@ export default function RegisterPage() {
               className="w-48 h-24"
             />
           </div>
-          <CardTitle className="text-2xl text-orange-600">Register</CardTitle>
+          <CardTitle className="text-2xl text-orange-600">
+            {searchParams.get('role') === 'participant' ? 'Join as Participant' : 
+             searchParams.get('role') === 'audience' ? 'Join as Audience' : 
+             'Register'}
+          </CardTitle>
           <CardDescription>
-            Create your account to join the game
+            {searchParams.get('role') === 'participant' ? 'Create your account to play and win!' :
+             searchParams.get('role') === 'audience' ? 'Create your account to watch and cheer!' :
+             'Create your account to join the game'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -102,38 +108,41 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Role Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Your Role
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {roleOptions.map((role) => {
-                  const Icon = role.icon;
-                  return (
-                    <button
-                      key={role.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, role: role.value })}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        formData.role === role.value
-                          ? `border-${role.color}-500 bg-${role.color}-50`
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <Icon className={`w-6 h-6 mx-auto mb-1 ${
-                        formData.role === role.value ? `text-${role.color}-600` : 'text-gray-400'
-                      }`} />
-                      <span className={`text-xs font-medium ${
-                        formData.role === role.value ? `text-${role.color}-600` : 'text-gray-500'
-                      }`}>
-                        {role.label}
-                      </span>
-                    </button>
-                  );
-                })}
+            {/* Role Selection - Only show if no role specified in URL */}
+            {!searchParams.get('role') && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Your Role
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {roleOptions.map((role) => {
+                    const Icon = role.icon;
+                    return (
+                      <button
+                        key={role.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, role: role.value })}
+                        className={`p-3 rounded-lg border-2 transition-all ${
+                          formData.role === role.value
+                            ? `border-${role.color}-500 bg-${role.color}-50`
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <Icon className={`w-6 h-6 mx-auto mb-1 ${
+                          formData.role === role.value ? `text-${role.color}-600` : 'text-gray-400'
+                        }`} />
+                        <span className={`text-xs font-medium ${
+                          formData.role === role.value ? `text-${role.color}-600` : 'text-gray-500'
+                        }`}>
+                          {role.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
             
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
