@@ -128,9 +128,13 @@ export default function GeneralAdminPage() {
     }
   };
 
-  const handleCreateEpisode = async () => {
+  const handleCreateEpisode = async (roleOverride?: 'PARTICIPANT' | 'AUDIENCE') => {
     try {
-      await api.post('/episodes', newEpisode);
+      const episodeData = roleOverride 
+        ? { ...newEpisode, targetRole: roleOverride }
+        : newEpisode;
+      
+      await api.post('/episodes', episodeData);
       setNewEpisode({
         title: '',
         description: '',
@@ -138,7 +142,7 @@ export default function GeneralAdminPage() {
         targetRole: 'PARTICIPANT',
       });
       setIsEpisodeDialogOpen(false);
-      fetchQuestions();
+      fetchQuestions(); // This refreshes episodes too
     } catch (error) {
       console.error('Error creating episode:', error);
       alert('Failed to create episode. Please check all required fields.');
@@ -218,8 +222,8 @@ export default function GeneralAdminPage() {
         </div>
 
         {/* Question Creation Dialog (Opened from Episode Cards) */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="bg-white">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="bg-white">
               <DialogHeader>
                 <DialogTitle>Create New Question</DialogTitle>
               </DialogHeader>
@@ -367,8 +371,8 @@ export default function GeneralAdminPage() {
                 <div className="text-teal-600 font-medium">For spectators • Easier questions • Difficulty 1-5</div>
               </div>
             </div>
-          </div>
-          
+        </div>
+
           <div className="flex space-x-3 bg-white rounded-lg p-2 mt-6 shadow-xl">
             <button
               onClick={() => setActiveTab('participant-episodes')}
@@ -444,10 +448,7 @@ export default function GeneralAdminPage() {
                       </select>
                     </div>
                     <Button 
-                      onClick={() => {
-                        setNewEpisode({ ...newEpisode, targetRole: 'PARTICIPANT' });
-                        handleCreateEpisode();
-                      }} 
+                      onClick={() => handleCreateEpisode('PARTICIPANT')} 
                       className="w-full bg-blue-500 hover:bg-blue-600"
                     >
                       Create Participant Episode
@@ -627,10 +628,7 @@ export default function GeneralAdminPage() {
                       </select>
                     </div>
                     <Button 
-                      onClick={() => {
-                        setNewEpisode({ ...newEpisode, targetRole: 'AUDIENCE' });
-                        handleCreateEpisode();
-                      }} 
+                      onClick={() => handleCreateEpisode('AUDIENCE')} 
                       className="w-full bg-teal-500 hover:bg-teal-600"
                     >
                       Create Audience Episode
@@ -672,7 +670,7 @@ export default function GeneralAdminPage() {
                 </div>
               </div>
             ) : (
-              <div className="grid gap-6">
+            <div className="grid gap-6">
                 {episodes.filter(e => e.targetRole === 'AUDIENCE').map((episode) => (
                 <Card key={episode.id} className="p-6 bg-white shadow-xl border-2 border-teal-200 hover:border-teal-400 transition-all">
                   <div className="flex justify-between items-start mb-4">
@@ -749,8 +747,8 @@ export default function GeneralAdminPage() {
                     </div>
                   </div>
                 </Card>
-                ))}
-              </div>
+              ))}
+            </div>
             )}
           </>
         )}
@@ -780,12 +778,12 @@ export default function GeneralAdminPage() {
                   >
                     + Add First Question
                   </Button>
-                </div>
+            </div>
               ) : (
                 episodeQuestions.map((question, index) => (
                   <Card key={question.id} className="p-4">
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
+                    <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-bold text-gray-700">Q{index + 1}.</span>
                           <h4 className="font-semibold">{question.question}</h4>
@@ -815,9 +813,9 @@ export default function GeneralAdminPage() {
                               }`}
                             >
                               {String.fromCharCode(65 + idx)}. {option}
-                            </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
+                      </div>
                         <div className="mt-2 text-xs text-gray-500">
                           Difficulty: {question.difficulty} | Status: {question.isActive ? '✅ Active' : '❌ Inactive'}
                         </div>
@@ -829,8 +827,8 @@ export default function GeneralAdminPage() {
                       >
                         {question.isActive ? 'Deactivate' : 'Activate'}
                       </Button>
-                    </div>
-                  </Card>
+                  </div>
+                </Card>
                 ))
               )}
             </div>

@@ -9,6 +9,7 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     private currentQuestionTimeLeft;
     private questionTimeLimit;
     constructor(gameService: GameService);
+    private getTimeLimitByDifficulty;
     handleConnection(client: Socket): Promise<void>;
     handleDisconnect(client: Socket): Promise<void>;
     handleJoinGame(client: Socket, data: {

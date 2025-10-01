@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { EpisodeService } from './episode.service';
 import { CreateEpisodeDto } from './dto/create-episode.dto';
@@ -29,13 +30,13 @@ export class EpisodeController {
   }
 
   @Get()
-  findAll(@Request() req) {
+  findAll(@Request() req, @Query('targetRole') targetRole?: string) {
     // General admin can see all episodes
     if (req.user.role === 'GENERAL_ADMIN') {
       return this.episodeService.findAll();
     }
-    // Game master can only see published episodes
-    return this.episodeService.getPublishedEpisodes();
+    // Game master can see published episodes, optionally filtered by targetRole
+    return this.episodeService.getPublishedEpisodes(targetRole);
   }
 
   @Get(':id')

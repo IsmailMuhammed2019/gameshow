@@ -43,6 +43,7 @@ export default function ParticipantPage() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [timeLimit, setTimeLimit] = useState<number>(10);
   const [timerActive, setTimerActive] = useState<boolean>(false);
+  const [currentDifficulty, setCurrentDifficulty] = useState<number>(0);
 
   useEffect(() => {
     if (!user || user.role !== 'PARTICIPANT') {
@@ -92,6 +93,7 @@ export default function ParticipantPage() {
       setTimeLimit(timerData.timeLimit);
       setTimeLeft(timerData.timeLeft);
       setTimerActive(true);
+      setCurrentDifficulty(timerData.difficulty || 0);
     });
 
     newSocket.on('timer_update', (timerData: any) => {
@@ -402,6 +404,11 @@ export default function ParticipantPage() {
                         {timeLeft}
                       </div>
                       <div className="text-sm text-white/80">seconds left</div>
+                      {currentDifficulty > 0 && (
+                        <div className="text-xs text-white/70 mt-1">
+                          Difficulty: {currentDifficulty} | Time: {timeLimit}s
+                        </div>
+                      )}
                     </div>
                     <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
                       <div 

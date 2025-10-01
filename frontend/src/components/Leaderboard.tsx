@@ -86,11 +86,19 @@ export default function Leaderboard({
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
+        {role === 'AUDIENCE' && filteredParticipants.length > 0 && (
+          <div className="mb-3 p-3 bg-teal-500/20 border border-teal-400/30 rounded-lg">
+            <p className="text-xs text-teal-200 text-center">
+              👥 Audience members participate for fun - only participants earn points!
+            </p>
+          </div>
+        )}
+        
         <div className="space-y-2">
           {sortedParticipants.length === 0 ? (
             <div className="text-center py-4 text-white/70">
               <Trophy className="w-8 h-8 mx-auto mb-2 text-white/50" />
-              <p>No participants yet</p>
+              <p>No {role === 'PARTICIPANT' ? 'participants' : 'audience members'} yet</p>
             </div>
           ) : (
             sortedParticipants.map((participant, index) => (
@@ -123,10 +131,21 @@ export default function Leaderboard({
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Trophy className="w-4 h-4" />
-                  <span className="font-bold text-lg">
-                    {participant.score}
-                  </span>
+                  {role === 'AUDIENCE' ? (
+                    <>
+                      <span className="text-xs">👥</span>
+                      <span className="font-bold text-sm text-white/70">
+                        Participating
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Trophy className="w-4 h-4" />
+                      <span className="font-bold text-lg">
+                        {participant.score}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             ))

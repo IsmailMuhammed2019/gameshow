@@ -71,12 +71,19 @@ export class EpisodeService {
     });
   }
 
-  async getPublishedEpisodes() {
+  async getPublishedEpisodes(targetRole?: string) {
+    const whereClause: any = { 
+      isActive: true,
+      status: 'PUBLISHED'
+    };
+
+    // Filter by targetRole if provided
+    if (targetRole && (targetRole === 'PARTICIPANT' || targetRole === 'AUDIENCE')) {
+      whereClause.targetRole = targetRole;
+    }
+
     return this.prisma.episode.findMany({
-      where: { 
-        isActive: true,
-        status: 'PUBLISHED'
-      },
+      where: whereClause,
       include: {
         questions: {
           where: { isActive: true },

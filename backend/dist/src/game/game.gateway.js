@@ -27,6 +27,20 @@ let GameGateway = class GameGateway {
             this.broadcastUserList();
         }, 30000);
     }
+    getTimeLimitByDifficulty(difficulty) {
+        if (difficulty <= 3) {
+            return 10 + (difficulty - 1) * 2;
+        }
+        else if (difficulty <= 7) {
+            return 15 + (difficulty - 4) * 2.5;
+        }
+        else if (difficulty <= 11) {
+            return 25 + (difficulty - 8) * 2.5;
+        }
+        else {
+            return 35 + (difficulty - 12) * 3.33;
+        }
+    }
     async handleConnection(client) {
         console.log(`Client connected: ${client.id}`);
     }
@@ -48,6 +62,8 @@ let GameGateway = class GameGateway {
             userId: data.userId,
             role: data.role,
         });
+        client.join(`role_${data.role}`);
+        console.log(`User ${data.userId} joined role room: role_${data.role}`);
         if (data.gameSessionId) {
             client.join(`game_${data.gameSessionId}`);
         }
@@ -108,11 +124,15 @@ let GameGateway = class GameGateway {
             audience: audienceDetails,
         });
     }
-    startQuestionTimer() {
+    startQuestionTimer(difficulty) {
+        if (difficulty) {
+            this.questionTimeLimit = Math.round(this.getTimeLimitByDifficulty(difficulty));
+        }
         this.currentQuestionTimeLeft = this.questionTimeLimit;
         this.server.emit('timer_started', {
             timeLimit: this.questionTimeLimit,
             timeLeft: this.currentQuestionTimeLeft,
+            difficulty: difficulty,
         });
         this.questionTimer = setInterval(() => {
             this.currentQuestionTimeLeft--;
@@ -159,12 +179,26 @@ let GameGateway = class GameGateway {
                 }
                 console.log('First participant question:', participantQuestion);
                 console.log('First audience question:', audienceQuestion);
-                this.server.emit('new_question', {
+                if (participantQuestion) {
+                    this.server.to('role_PARTICIPANT').emit('new_question', {
+                        participantQuestion,
+                        audienceQuestion: null,
+                    });
+                    console.log('Participant question sent to participants');
+                }
+                if (audienceQuestion) {
+                    this.server.to('role_AUDIENCE').emit('new_question', {
+                        participantQuestion: null,
+                        audienceQuestion,
+                    });
+                    console.log('Audience question sent to audience');
+                }
+                client.emit('new_question', {
                     participantQuestion,
                     audienceQuestion,
                 });
-                console.log('First questions broadcasted to all clients');
-                this.startQuestionTimer();
+                const timerDifficulty = participantQuestion?.difficulty || 5;
+                this.startQuestionTimer(timerDifficulty);
             }
             return { success: true, gameSession };
         }
@@ -187,12 +221,26 @@ let GameGateway = class GameGateway {
             }
             console.log('Participant question retrieved:', participantQuestion);
             console.log('Audience question retrieved:', audienceQuestion);
-            this.server.emit('new_question', {
+            if (participantQuestion) {
+                this.server.to('role_PARTICIPANT').emit('new_question', {
+                    participantQuestion,
+                    audienceQuestion: null,
+                });
+                console.log('Participant question sent to participants');
+            }
+            if (audienceQuestion) {
+                this.server.to('role_AUDIENCE').emit('new_question', {
+                    participantQuestion: null,
+                    audienceQuestion,
+                });
+                console.log('Audience question sent to audience');
+            }
+            client.emit('new_question', {
                 participantQuestion,
                 audienceQuestion,
             });
-            console.log('Questions broadcasted to all clients');
-            this.startQuestionTimer();
+            const timerDifficulty = participantQuestion?.difficulty || 5;
+            this.startQuestionTimer(timerDifficulty);
             client.emit('next_question_response', {
                 success: true,
                 participantQuestion,
@@ -320,19 +368,27 @@ let GameGateway = class GameGateway {
             await this.gameService.getGameSession(data.gameSessionId);
             this.stopQuestionTimer();
             if (data.targetRole === 'PARTICIPANT') {
-                this.server.emit('new_question', {
+                this.server.to('role_PARTICIPANT').emit('new_question', {
+                    participantQuestion: question,
+                    audienceQuestion: null,
+                });
+                client.emit('new_question', {
                     participantQuestion: question,
                     audienceQuestion: null,
                 });
             }
             else if (data.targetRole === 'AUDIENCE') {
-                this.server.emit('new_question', {
+                this.server.to('role_AUDIENCE').emit('new_question', {
+                    participantQuestion: null,
+                    audienceQuestion: question,
+                });
+                client.emit('new_question', {
                     participantQuestion: null,
                     audienceQuestion: question,
                 });
             }
             console.log('Question sent to', data.targetRole);
-            this.startQuestionTimer();
+            this.startQuestionTimer(question.difficulty);
             return { success: true, question };
         }
         catch (error) {

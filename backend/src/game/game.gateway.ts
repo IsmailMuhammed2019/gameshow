@@ -30,13 +30,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private connectedUsers = new Map<string, { socket: Socket; userId: string; role: string }>();
   private questionTimer: NodeJS.Timeout | null = null;
   private currentQuestionTimeLeft: number = 0;
-  private questionTimeLimit: number = 10; // 10 seconds per question
+  private questionTimeLimit: number = 10; // Default time, will be set based on difficulty
 
   constructor(private gameService: GameService) {
     // Broadcast user list every 30 seconds to keep it updated
     setInterval(() => {
       this.broadcastUserList();
     }, 30000);
+  }
+
+  /**
+   * Calculate timer duration based on question difficulty
+   * Difficulty 1-3: Easy (10-15 seconds)
+   * Difficulty 4-7: Medium (15-25 seconds) 
+   * Difficulty 8-11: Hard (25-35 seconds)
+   * Difficulty 12-15: Expert (35-45 seconds)
+   */
+  private getTimeLimitByDifficulty(difficulty: number): number {
+    if (difficulty <= 3) {
+      return 10 + (difficulty - 1) * 2; // 10, 12, 14 seconds
+    } else if (difficulty <= 7) {
+      return 15 + (difficulty - 4) * 2.5; // 15, 17.5, 20, 22.5 seconds
+    } else if (difficulty <= 11) {
+      return 25 + (difficulty - 8) * 2.5; // 25, 27.5, 30, 32.5 seconds
+    } else {
+      return 35 + (difficulty - 12) * 3.33; // 35, 38.33, 41.66, 45 seconds
+    }
   }
 
   async handleConnection(client: Socket) {
@@ -70,6 +89,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: data.userId,
       role: data.role,
     });
+
+    // Join user to role-specific room for targeted question distribution
+    client.join(`role_${data.role}`);
+    console.log(`User ${data.userId} joined role room: role_${data.role}`);
 
     if (data.gameSessionId) {
       client.join(`game_${data.gameSessionId}`);
@@ -144,12 +167,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  private startQuestionTimer() {
+  private startQuestionTimer(difficulty?: number) {
+    // Set time limit based on difficulty if provided, otherwise use default
+    if (difficulty) {
+      this.questionTimeLimit = Math.round(this.getTimeLimitByDifficulty(difficulty));
+    }
+    
     this.currentQuestionTimeLeft = this.questionTimeLimit;
     
     this.server.emit('timer_started', {
       timeLimit: this.questionTimeLimit,
       timeLeft: this.currentQuestionTimeLeft,
+      difficulty: difficulty,
     });
 
     this.questionTimer = setInterval(() => {
@@ -218,15 +247,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         console.log('First participant question:', participantQuestion);
         console.log('First audience question:', audienceQuestion);
 
-        // Send the first question to all clients
-        this.server.emit('new_question', {
+        // Send questions to appropriate roles
+        if (participantQuestion) {
+          this.server.to('role_PARTICIPANT').emit('new_question', {
+            participantQuestion,
+            audienceQuestion: null,
+          });
+          console.log('Participant question sent to participants');
+        }
+        
+        if (audienceQuestion) {
+          this.server.to('role_AUDIENCE').emit('new_question', {
+            participantQuestion: null,
+            audienceQuestion,
+          });
+          console.log('Audience question sent to audience');
+        }
+
+        // Also send to Game Master so they can see the questions
+        client.emit('new_question', {
           participantQuestion,
           audienceQuestion,
         });
-        console.log('First questions broadcasted to all clients');
         
-        // Start the timer for the first question
-        this.startQuestionTimer();
+        // Start the timer for the first question (use participant question difficulty if available)
+        const timerDifficulty = participantQuestion?.difficulty || 5; // Default to medium difficulty
+        this.startQuestionTimer(timerDifficulty);
       }
       
       return { success: true, gameSession };
@@ -260,15 +306,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       console.log('Participant question retrieved:', participantQuestion);
       console.log('Audience question retrieved:', audienceQuestion);
       
-      // Send different questions to different user roles
-      this.server.emit('new_question', {
+      // Send questions to appropriate roles
+      if (participantQuestion) {
+        this.server.to('role_PARTICIPANT').emit('new_question', {
+          participantQuestion,
+          audienceQuestion: null,
+        });
+        console.log('Participant question sent to participants');
+      }
+      
+      if (audienceQuestion) {
+        this.server.to('role_AUDIENCE').emit('new_question', {
+          participantQuestion: null,
+          audienceQuestion,
+        });
+        console.log('Audience question sent to audience');
+      }
+
+      // Also send to Game Master so they can see the questions
+      client.emit('new_question', {
         participantQuestion,
         audienceQuestion,
       });
-      console.log('Questions broadcasted to all clients');
       
-      // Start the timer for the new question
-      this.startQuestionTimer();
+      // Start the timer for the new question (use participant question difficulty if available)
+      const timerDifficulty = participantQuestion?.difficulty || 5; // Default to medium difficulty
+      this.startQuestionTimer(timerDifficulty);
       
       // Send acknowledgment back to the game master
       client.emit('next_question_response', { 
@@ -470,14 +533,26 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Stop any existing timer
       this.stopQuestionTimer();
 
-      // Send question based on target role
+      // Send question only to the target role
       if (data.targetRole === 'PARTICIPANT') {
-        this.server.emit('new_question', {
+        // Send only to participants
+        this.server.to('role_PARTICIPANT').emit('new_question', {
+          participantQuestion: question,
+          audienceQuestion: null,
+        });
+        // Also send to Game Master
+        client.emit('new_question', {
           participantQuestion: question,
           audienceQuestion: null,
         });
       } else if (data.targetRole === 'AUDIENCE') {
-        this.server.emit('new_question', {
+        // Send only to audience
+        this.server.to('role_AUDIENCE').emit('new_question', {
+          participantQuestion: null,
+          audienceQuestion: question,
+        });
+        // Also send to Game Master
+        client.emit('new_question', {
           participantQuestion: null,
           audienceQuestion: question,
         });
@@ -485,8 +560,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       console.log('Question sent to', data.targetRole);
 
-      // Start the timer for the question
-      this.startQuestionTimer();
+      // Start the timer for the question with difficulty-based timing
+      this.startQuestionTimer(question.difficulty);
 
       return { success: true, question };
     } catch (error) {

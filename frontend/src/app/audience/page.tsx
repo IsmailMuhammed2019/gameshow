@@ -38,6 +38,7 @@ export default function AudiencePage() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [timeLimit, setTimeLimit] = useState<number>(10);
   const [timerActive, setTimerActive] = useState<boolean>(false);
+  const [currentDifficulty, setCurrentDifficulty] = useState<number>(0);
   // Removed screen overlay functionality
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function AudiencePage() {
       setTimeLimit(timerData.timeLimit);
       setTimeLeft(timerData.timeLeft);
       setTimerActive(true);
+      setCurrentDifficulty(timerData.difficulty || 0);
     });
 
     newSocket.on('timer_update', (timerData: any) => {
@@ -102,12 +104,16 @@ export default function AudiencePage() {
     });
 
     newSocket.on('winner_announced', (winner: any) => {
-      addWinner(winner);
-      setShowWinnerModal(true);
-      // Auto-dismiss modal after 3 seconds
-      setTimeout(() => {
-        setShowWinnerModal(false);
-      }, 3000);
+      console.log('Winner announced:', winner);
+      // Only show modal for audience winners
+      if (winner.role === 'AUDIENCE') {
+        addWinner(winner);
+        setShowWinnerModal(true);
+        // Auto-dismiss modal after 3 seconds
+        setTimeout(() => {
+          setShowWinnerModal(false);
+        }, 3000);
+      }
     });
 
     newSocket.on('audience_winner', (winner: any) => {
@@ -136,6 +142,15 @@ export default function AudiencePage() {
           submitted: true,
         });
       }
+    });
+
+    newSocket.on('user_list_updated', (data: any) => {
+      console.log('User list updated:', data);
+      console.log('Audience count:', data.audience?.length || 0);
+      // Update audience list
+      setAudience(data.audience || []);
+      setParticipants(data.participants || []);
+      console.log('Updated store - audience:', data.audience || []);
     });
 
     return () => {
@@ -184,7 +199,6 @@ export default function AudiencePage() {
               Audience Portal
             </h1>
             <p className="text-white/80">Welcome, {user.username} (#{user.uniqueNumber})</p>
-            <p className="text-teal-300 text-sm">👥 Participate alongside the main game!</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -199,29 +213,94 @@ export default function AudiencePage() {
         </div> 
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Current Question */}
-        <div className="lg:col-span-2">
-          <Card className="question-card">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Sidebar - Stats */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Audience Stats */}
+          <Card className="bg-gradient-to-br from-teal-500 to-blue-600 border-2 border-teal-300">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-white mb-2">
+                👥 AUDIENCE
+              </CardTitle>
+              <CardDescription className="text-teal-100">
+                Watching & Participating
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="p-4 bg-white/20 rounded-lg backdrop-blur-sm border border-white/30">
+                <p className="text-white/80 text-sm mb-1">You are</p>
+                <p className="text-3xl font-bold text-white">#{user.uniqueNumber}</p>
+              </div>
+              <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm border border-white/30">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/90 text-sm">Total Audience</span>
+                  <span className="text-white font-bold text-lg">{audience.length}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Audience Winners */}
+          <Card className="game-show-card">
             <CardHeader>
-              <CardTitle className="text-teal-blue-600 flex items-center">
-                <Eye className="w-5 h-5 mr-2" />
-                Audience Question
+              <CardTitle className="text-xl font-bold text-gray-800 text-center">
+                🏆 RECENT WINNERS
+              </CardTitle>
+              <CardDescription className="text-gray-600 text-center text-sm">
+                Top audience answers
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {winners.filter(w => w.role === 'AUDIENCE').length > 0 ? (
+                <div className="space-y-3">
+                  {winners.filter(w => w.role === 'AUDIENCE').slice(-3).map((winner, index) => (
+                    <div key={index} className="player-item p-3 bg-gradient-to-r from-teal-50 to-blue-50 border border-teal-300 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold shadow">
+                            🏆
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800 text-sm">{winner.username}</p>
+                            <p className="text-xs text-teal-600">#{winner.uniqueNumber}</p>
+                          </div>
+                        </div>
+                        {winner.responseTime !== undefined && winner.responseTime > 0 && (
+                          <div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                            ⏱️ {(winner.responseTime / 1000).toFixed(1)}s
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <div className="text-3xl mb-2">🎯</div>
+                  <p className="text-gray-500 text-sm font-medium">No winners yet</p>
+                  <p className="text-xs text-gray-400">Be first!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Center - Current Question */}
+        <div className="lg:col-span-2">
+          <Card className="question-display">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-white mb-2">
+                📺 YOUR QUESTION
               </CardTitle>
               {gameSession && (
-                <CardDescription>
-                  {currentQuestion ? `Audience Question ${gameSession.currentQuestionIndex || 1}` : 'Waiting for audience question...'}
+                <CardDescription className="text-orange-300">
+                  Question {gameSession.currentQuestionIndex} • Difficulty: {currentQuestion?.difficulty || 'N/A'}
                 </CardDescription>
               )}
-              <div className="mt-2 p-2 bg-teal-50 rounded-lg border border-teal-200">
-                <p className="text-sm text-teal-700 font-medium">
-                  👥 This question is specifically for audience members
-                </p>
-              </div>
               
               {/* Timer Display */}
               {timerActive && (
-                <div className="mt-4 p-4 bg-gradient-to-r from-teal-500 to-blue-500 rounded-lg border-2 border-teal-200">
+                <div className="mt-4 p-4 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg border-2 border-white/20">
                   <div className="flex items-center justify-center space-x-3">
                     <div className="text-3xl">⏰</div>
                     <div className="text-center">
@@ -229,6 +308,11 @@ export default function AudiencePage() {
                         {timeLeft}
                       </div>
                       <div className="text-sm text-white/80">seconds left</div>
+                      {currentDifficulty > 0 && (
+                        <div className="text-xs text-white/70 mt-1">
+                          Difficulty: {currentDifficulty} | Time: {timeLimit}s
+                        </div>
+                      )}
                     </div>
                     <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
                       <div 
@@ -240,11 +324,13 @@ export default function AudiencePage() {
                 </div>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative z-10">
               {currentQuestion ? (
                 <div>
-                  <p className="text-xl font-medium mb-6">{currentQuestion.question}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-black/30 p-8 rounded-xl mb-8">
+                    <p className="text-2xl font-bold text-white leading-relaxed text-center">{currentQuestion.question}</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {currentQuestion.options && currentQuestion.options.map((option, index) => {
                       const isSelected = selectedOption === index;
                       const isCorrect = answerResult?.correctAnswer === index;
@@ -254,23 +340,23 @@ export default function AudiencePage() {
                         <button
                           key={index}
                           onClick={() => submitAnswer(index)}
-                          disabled={isAnswering || answerResult}
-                          className={`p-4 rounded-lg border-2 text-left transition-all duration-200 ${
+                          disabled={isAnswering || answerResult || hasAnswered}
+                          className={`option-button p-6 rounded-2xl text-left text-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
                             isCorrect
-                              ? 'border-green-500 bg-green-100 text-green-800'
+                              ? 'border-4 border-green-400 bg-green-100 text-green-800 shadow-green-glow'
                               : isIncorrect
-                              ? 'border-red-500 bg-red-100 text-red-800'
+                              ? 'border-4 border-red-400 bg-red-100 text-red-800'
                               : isSelected
-                              ? 'border-teal-blue-500 bg-teal-blue-100 text-teal-blue-800'
-                              : 'border-gray-200 bg-gray-50 hover:border-teal-blue-300 hover:bg-teal-blue-50'
-                          } ${isAnswering || answerResult ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                              ? 'border-4 border-teal-400 bg-teal-100 text-teal-800'
+                              : 'border-4 border-white/30 bg-white/10 text-white hover:border-teal-400 hover:bg-white/20'
+                          } ${(isAnswering || answerResult || hasAnswered) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
                         >
-                          <span className="font-bold text-teal-blue-600 mr-3">
-                            {String.fromCharCode(65 + index)}.
+                          <span className="inline-block w-10 h-10 bg-teal-400 text-white rounded-full flex items-center justify-center mr-3 font-bold text-xl">
+                            {String.fromCharCode(65 + index)}
                           </span>
                           {option}
-                          {isCorrect && <span className="ml-2">✅</span>}
-                          {isIncorrect && <span className="ml-2">❌</span>}
+                          {isCorrect && <span className="ml-2 text-2xl">✅</span>}
+                          {isIncorrect && <span className="ml-2 text-2xl">❌</span>}
                         </button>
                       );
                     })}
@@ -319,88 +405,29 @@ export default function AudiencePage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <Eye className="w-16 h-16 text-teal-blue-500 mx-auto mb-4" />
-                  <p className="text-xl text-gray-500">Waiting for the game to start...</p>
-                  <p className="text-gray-400 mt-2">Answer questions along with participants!</p>
+                  <Eye className="w-16 h-16 text-white/50 mx-auto mb-4" />
+                  <p className="text-xl text-white/90">Waiting for the game to start...</p>
+                  <p className="text-white/60 mt-2">Get ready to answer!</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Audience Sidebar */}
-        <div className="space-y-6">
-          {/* Audience Leaderboard */}
-          <Leaderboard
+        {/* Right Sidebar - Leaderboard */}
+        <div className="lg:col-span-1">
+          {(() => {
+            console.log('Rendering audience leaderboard - Audience:', audience.length);
+            console.log('Audience data:', audience);
+            return null;
+          })()}
+          <Leaderboard 
             participants={audience}
+            role="AUDIENCE"
+            title="👥 Audience Leaderboard"
             currentUserId={user.id}
-            showTop={5}
-            className="mb-6"
+            showTop={10}
           />
-
-          {/* Recent Audience Winners */}
-          <Card className="question-card">
-            <CardHeader>
-              <CardTitle className="text-teal-blue-600 flex items-center">
-                <Trophy className="w-5 h-5 mr-2" />
-                Recent Audience Winners
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {audienceWinners.length > 0 ? (
-                <div className="space-y-2">
-                  {audienceWinners.slice(-5).map((winner, index) => (
-                    <div key={index} className="p-3 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg border border-teal-200">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium text-teal-700">{winner.username}</p>
-                          <p className="text-sm text-teal-600">#{winner.uniqueNumber}</p>
-                          <p className="text-xs text-gray-500">Audience Member</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Users className="w-12 h-12 text-teal-500 mx-auto mb-3" />
-                  <p className="text-gray-500">No audience winners yet</p>
-                  <p className="text-sm text-gray-400 mt-1">Audience members don't earn points but can still participate!</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Audience Stats */}
-          <Card className="question-card">
-            <CardHeader>
-              <CardTitle className="text-teal-blue-600 flex items-center">
-                <Eye className="w-5 h-5 mr-2" />
-                Audience Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                  <span className="text-blue-700 font-medium">Total Audience</span>
-                  <span className="text-blue-800 font-bold text-lg">{audience.length}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-teal-50 rounded-lg">
-                  <span className="text-teal-700 font-medium">Active Now</span>
-                  <span className="text-teal-800 font-bold text-lg">{audience.filter(a => a.isActive).length}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                  <span className="text-green-700 font-medium">Questions Answered</span>
-                  <span className="text-green-800 font-bold text-lg">
-                    {audience.reduce((total, a) => total + (a.score || 0), 0)}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 

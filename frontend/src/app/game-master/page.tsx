@@ -40,6 +40,7 @@ export default function GameMasterPage() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [timeLimit, setTimeLimit] = useState<number>(10);
   const [timerActive, setTimerActive] = useState<boolean>(false);
+  const [currentDifficulty, setCurrentDifficulty] = useState<number>(0);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [selectedEpisode, setSelectedEpisode] = useState<string>('');
   const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
@@ -51,9 +52,10 @@ export default function GameMasterPage() {
     setShowNotifications(false);
   };
 
-  const fetchEpisodes = async () => {
+  const fetchEpisodes = async (roleFilter?: string) => {
     try {
-      const response = await api.get('/episodes');
+      const url = roleFilter ? `/episodes?targetRole=${roleFilter}` : '/episodes';
+      const response = await api.get(url);
       setEpisodes(response.data);
     } catch (error) {
       console.error('Error fetching episodes:', error);
@@ -108,10 +110,10 @@ export default function GameMasterPage() {
     currentQuestionRef.current = currentQuestion;
   }, [currentQuestion]);
 
-  // Fetch episodes on component mount
+  // Fetch episodes on component mount - default to PARTICIPANT
   useEffect(() => {
     if (user && user.role === 'GAME_MASTER') {
-      fetchEpisodes();
+      fetchEpisodes('PARTICIPANT'); // Start with participant episodes
     }
   }, [user]);
 
@@ -339,6 +341,7 @@ export default function GameMasterPage() {
         setTimeLimit(timerData.timeLimit);
         setTimeLeft(timerData.timeLeft);
         setTimerActive(true);
+        setCurrentDifficulty(timerData.difficulty || 0);
       });
 
       newSocket.on('timer_update', (timerData: any) => {
@@ -478,6 +481,7 @@ export default function GameMasterPage() {
                   onClick={() => {
                     setTargetRole('PARTICIPANT');
                     setSelectedEpisode(''); // Reset episode when changing role
+                    fetchEpisodes('PARTICIPANT'); // Fetch only participant episodes
                   }}
                   className={`p-3 rounded-lg text-sm font-medium transition-all ${
                     targetRole === 'PARTICIPANT'
@@ -491,6 +495,7 @@ export default function GameMasterPage() {
                   onClick={() => {
                     setTargetRole('AUDIENCE');
                     setSelectedEpisode(''); // Reset episode when changing role
+                    fetchEpisodes('AUDIENCE'); // Fetch only audience episodes
                   }}
                   className={`p-3 rounded-lg text-sm font-medium transition-all ${
                     targetRole === 'AUDIENCE'
@@ -569,6 +574,11 @@ export default function GameMasterPage() {
                       {timeLeft}
                     </div>
                     <div className="text-sm text-white/80">seconds left</div>
+                    {currentDifficulty > 0 && (
+                      <div className="text-xs text-white/70 mt-1">
+                        Difficulty: {currentDifficulty} | Time: {timeLimit}s
+                      </div>
+                    )}
                   </div>
                   <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
                     <div 
