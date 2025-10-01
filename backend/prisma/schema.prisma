@@ -29,6 +29,12 @@ enum GameStatus {
   FINISHED
 }
 
+enum EpisodeStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -48,6 +54,22 @@ model User {
   @@map("users")
 }
 
+model Episode {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  status      EpisodeStatus  @default(DRAFT)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  questions    Question[]
+  gameSessions GameSession[]
+
+  @@map("episodes")
+}
+
 model Question {
   id            String       @id @default(cuid())
   question      String
@@ -57,10 +79,12 @@ model Question {
   targetRole    UserRole     @default(PARTICIPANT) // Which role this question is for
   questionType  QuestionType @default(MULTIPLE_CHOICE) // Type of question
   isActive      Boolean      @default(true)
+  episodeId     String?      // Link to episode
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
   // Relations
+  episode      Episode?      @relation(fields: [episodeId], references: [id])
   gameSessions GameSession[]
   answers      Answer[]
 
@@ -74,11 +98,13 @@ model GameSession {
   currentQuestionIndex Int        @default(0)
   totalQuestions       Int        @default(0)
   gameMasterId         String
+  episodeId            String?    // Selected episode
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
   // Relations
   gameMaster     User      @relation("GameMaster", fields: [gameMasterId], references: [id])
+  episode        Episode?  @relation(fields: [episodeId], references: [id])
   currentQuestion Question? @relation(fields: [currentQuestionId], references: [id])
   answers        Answer[]
 

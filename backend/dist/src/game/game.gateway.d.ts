@@ -23,12 +23,14 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
     handleStartGame(client: Socket, data: {
         gameMasterId: string;
         targetRole?: string;
+        episodeId?: string;
     }): Promise<{
         success: boolean;
         gameSession: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            episodeId: string | null;
             status: import(".prisma/client").$Enums.GameStatus;
             currentQuestionId: string | null;
             currentQuestionIndex: number;

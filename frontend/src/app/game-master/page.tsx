@@ -40,10 +40,21 @@ export default function GameMasterPage() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [timeLimit, setTimeLimit] = useState<number>(10);
   const [timerActive, setTimerActive] = useState<boolean>(false);
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [selectedEpisode, setSelectedEpisode] = useState<string>('');
 
   const clearNotifications = () => {
     setAnswerNotifications([]);
     setShowNotifications(false);
+  };
+
+  const fetchEpisodes = async () => {
+    try {
+      const response = await api.get('/episodes');
+      setEpisodes(response.data);
+    } catch (error) {
+      console.error('Error fetching episodes:', error);
+    }
   };
   
   // Use refs to avoid dependency issues
@@ -64,6 +75,13 @@ export default function GameMasterPage() {
   useEffect(() => {
     currentQuestionRef.current = currentQuestion;
   }, [currentQuestion]);
+
+  // Fetch episodes on component mount
+  useEffect(() => {
+    if (user && user.role === 'GAME_MASTER') {
+      fetchEpisodes();
+    }
+  }, [user]);
 
   const nextQuestion = useCallback(async () => {
     setIsLoadingQuestion(true);
@@ -91,15 +109,16 @@ export default function GameMasterPage() {
     const currentUser = userRef.current;
 
     if (currentSocket && currentUser?.id) {
-      console.log('Starting game with gameMasterId:', currentUser.id, 'targetRole:', targetRole);
+      console.log('Starting game with gameMasterId:', currentUser.id, 'targetRole:', targetRole, 'episodeId:', selectedEpisode);
       currentSocket.emit('start_game', { 
         gameMasterId: currentUser.id,
-        targetRole: targetRole
+        targetRole: targetRole,
+        episodeId: selectedEpisode || undefined
       });
     } else {
       console.error('Cannot start game: socket or user not available');
     }
-  }, [targetRole]);
+  }, [targetRole, selectedEpisode]);
 
   const endGame = useCallback(async () => {
     const currentSocket = socketRef.current;
@@ -422,6 +441,28 @@ export default function GameMasterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Episode Selection */}
+            <div className="space-y-3">
+              <label className="text-white font-medium">Select Episode:</label>
+              <select
+                value={selectedEpisode}
+                onChange={(e) => setSelectedEpisode(e.target.value)}
+                className="w-full p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-orange-500 focus:outline-none"
+              >
+                <option value="">🎲 Random Questions (No Episode)</option>
+                {episodes.filter(ep => ep.status === 'PUBLISHED').map((episode) => (
+                  <option key={episode.id} value={episode.id}>
+                    📺 {episode.title} ({episode._count?.questions || 0} questions)
+                  </option>
+                ))}
+              </select>
+              {selectedEpisode && (
+                <div className="text-xs text-orange-300 bg-orange-500/10 p-2 rounded">
+                  ℹ️ Questions will be selected from this episode
+                </div>
+              )}
+            </div>
+
             {/* Role Selection */}
             <div className="space-y-3">
               <label className="text-white font-medium">Target Role:</label>

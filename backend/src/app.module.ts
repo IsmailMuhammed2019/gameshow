@@ -4,6 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { GameModule } from './game/game.module';
 import { UserModule } from './user/user.module';
+import { EpisodeModule } from './episode/episode.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -16,6 +17,7 @@ import { AppService } from './app.service';
     AuthModule,
     GameModule,
     UserModule,
+    EpisodeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

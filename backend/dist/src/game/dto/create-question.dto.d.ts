@@ -4,4 +4,6 @@ export declare class CreateQuestionDto {
     correctAnswer: number;
     difficulty: number;
     questionType?: 'MULTIPLE_CHOICE' | 'YES_NO';
+    targetRole?: 'PARTICIPANT' | 'AUDIENCE';
+    episodeId?: string;
 }

@@ -23,4 +23,12 @@ export class CreateQuestionDto {
   @IsOptional()
   @IsEnum(['MULTIPLE_CHOICE', 'YES_NO'])
   questionType?: 'MULTIPLE_CHOICE' | 'YES_NO';
+
+  @IsOptional()
+  @IsEnum(['PARTICIPANT', 'AUDIENCE'])
+  targetRole?: 'PARTICIPANT' | 'AUDIENCE';
+
+  @IsOptional()
+  @IsString()
+  episodeId?: string;
 }

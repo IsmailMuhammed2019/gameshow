@@ -44,8 +44,8 @@ let GameController = class GameController {
     async updateQuestion(id, updateData) {
         return this.gameService.updateQuestion(id, updateData);
     }
-    startGame(req) {
-        return this.gameService.startGame(req.user.userId);
+    startGame(req, body = {}) {
+        return this.gameService.startGame(req.user.userId, body.episodeId);
     }
     getNextQuestion(sessionId, req, body = {}) {
         return this.gameService.getNextQuestion(sessionId, req.user.userId, body.targetRole);
@@ -115,8 +115,9 @@ __decorate([
 __decorate([
     (0, common_1.Post)('start'),
     __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], GameController.prototype, "startGame", null);
 __decorate([

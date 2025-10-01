@@ -39,15 +39,36 @@ export class GameService {
     return questions;
   }
 
-  async startGame(gameMasterId: string): Promise<GameSession> {
+  async startGame(gameMasterId: string, episodeId?: string): Promise<GameSession> {
     const gameMaster = await this.prisma.user.findUnique({ where: { id: gameMasterId } });
     if (!gameMaster) {
       throw new NotFoundException('Game master not found');
     }
 
+    // If episodeId is provided, verify it exists and is published
+    if (episodeId) {
+      const episode = await this.prisma.episode.findUnique({
+        where: { id: episodeId },
+        include: { questions: { where: { isActive: true } } }
+      });
+      
+      if (!episode) {
+        throw new NotFoundException('Episode not found');
+      }
+      
+      if (episode.status !== 'PUBLISHED') {
+        throw new BadRequestException('Episode is not published');
+      }
+      
+      if (episode.questions.length === 0) {
+        throw new BadRequestException('Episode has no questions');
+      }
+    }
+
     return this.prisma.gameSession.create({
       data: {
         gameMasterId,
+        episodeId,
         status: GameStatus.ACTIVE,
         currentQuestionIndex: 0,
       },
@@ -60,6 +81,7 @@ export class GameService {
     // First try to find with gameMasterId
     let gameSession = await this.prisma.gameSession.findFirst({
       where: { id: gameSessionId, gameMasterId },
+      include: { episode: true }
     });
 
     console.log('Looking for game session with:', { gameSessionId, gameMasterId });
@@ -69,6 +91,7 @@ export class GameService {
     if (!gameSession) {
       gameSession = await this.prisma.gameSession.findFirst({
         where: { id: gameSessionId },
+        include: { episode: true }
       });
       console.log('Found game session by ID only:', gameSession);
     }
@@ -83,8 +106,26 @@ export class GameService {
       throw new BadRequestException('Game is not active');
     }
 
-    // Get a random active question for the specified role
-    const questions = await this.getActiveQuestions(targetRole);
+    let questions: Question[];
+
+    // If episode is selected, get questions from that episode
+    if (gameSession.episodeId) {
+      console.log('Getting questions from episode:', gameSession.episodeId);
+      const whereClause: any = {
+        episodeId: gameSession.episodeId,
+        isActive: true
+      };
+      
+      if (targetRole) {
+        whereClause.targetRole = targetRole;
+      }
+      
+      questions = await this.prisma.question.findMany({ where: whereClause });
+    } else {
+      // Fallback to all active questions
+      questions = await this.getActiveQuestions(targetRole);
+    }
+
     console.log(`Found ${questions.length} questions for role: ${targetRole || 'PARTICIPANT'}`);
     
     if (questions.length === 0) {

@@ -46,8 +46,8 @@ export class GameController {
   }
 
   @Post('start')
-  startGame(@Request() req) {
-    return this.gameService.startGame(req.user.userId);
+  startGame(@Request() req, @Body() body: { episodeId?: string } = {}) {
+    return this.gameService.startGame(req.user.userId, body.episodeId);
   }
 
   @Post('sessions/:sessionId/next-question')

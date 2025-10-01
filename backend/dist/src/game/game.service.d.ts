@@ -13,7 +13,7 @@ export declare class GameService {
     createQuestion(createQuestionDto: CreateQuestionDto): Promise<Question>;
     getAllQuestions(): Promise<Question[]>;
     getActiveQuestions(targetRole?: string): Promise<Question[]>;
-    startGame(gameMasterId: string): Promise<GameSession>;
+    startGame(gameMasterId: string, episodeId?: string): Promise<GameSession>;
     getNextQuestion(gameSessionId: string, gameMasterId: string, targetRole?: string): Promise<Question>;
     submitAnswer(userId: string, questionId: string, gameSessionId: string, selectedOption: number): Promise<{
         isCorrect: boolean;
@@ -40,6 +40,7 @@ export declare class GameService {
         difficulty: number;
         targetRole: import(".prisma/client").$Enums.UserRole;
         questionType: import(".prisma/client").$Enums.QuestionType;
+        episodeId: string | null;
     }>;
     getQuestionById(questionId: string): Promise<{
         id: string;
@@ -52,6 +53,7 @@ export declare class GameService {
         difficulty: number;
         targetRole: import(".prisma/client").$Enums.UserRole;
         questionType: import(".prisma/client").$Enums.QuestionType;
+        episodeId: string | null;
     }>;
     getAnswersForQuestion(questionId: string, gameSessionId: string): Promise<({
         user: {

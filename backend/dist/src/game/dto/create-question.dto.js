@@ -42,4 +42,14 @@ __decorate([
     (0, class_validator_1.IsEnum)(['MULTIPLE_CHOICE', 'YES_NO']),
     __metadata("design:type", String)
 ], CreateQuestionDto.prototype, "questionType", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(['PARTICIPANT', 'AUDIENCE']),
+    __metadata("design:type", String)
+], CreateQuestionDto.prototype, "targetRole", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateQuestionDto.prototype, "episodeId", void 0);
 //# sourceMappingURL=create-question.dto.js.map

@@ -141,8 +141,8 @@ let GameGateway = class GameGateway {
     }
     async handleStartGame(client, data) {
         try {
-            console.log('Start game requested by:', data.gameMasterId, 'targetRole:', data.targetRole);
-            const gameSession = await this.gameService.startGame(data.gameMasterId);
+            console.log('Start game requested by:', data.gameMasterId, 'targetRole:', data.targetRole, 'episodeId:', data.episodeId);
+            const gameSession = await this.gameService.startGame(data.gameMasterId, data.episodeId);
             console.log('Game session created:', gameSession);
             client.join(`game_${gameSession.id}`);
             this.server.emit('game_started', gameSession);

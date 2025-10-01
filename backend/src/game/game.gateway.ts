@@ -185,11 +185,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('start_game')
   async handleStartGame(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { gameMasterId: string; targetRole?: string },
+    @MessageBody() data: { gameMasterId: string; targetRole?: string; episodeId?: string },
   ) {
     try {
-      console.log('Start game requested by:', data.gameMasterId, 'targetRole:', data.targetRole);
-      const gameSession = await this.gameService.startGame(data.gameMasterId);
+      console.log('Start game requested by:', data.gameMasterId, 'targetRole:', data.targetRole, 'episodeId:', data.episodeId);
+      const gameSession = await this.gameService.startGame(data.gameMasterId, data.episodeId);
       console.log('Game session created:', gameSession);
       
       // Join the game master to the game room

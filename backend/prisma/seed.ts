@@ -329,10 +329,41 @@ async function main() {
     });
   }
 
+  // Create sample episodes
+  const sampleEpisodes = [
+    {
+      title: "General Knowledge",
+      description: "A collection of general knowledge questions covering various topics",
+      status: 'PUBLISHED' as const,
+    },
+    {
+      title: "Science & Technology",
+      description: "Questions about science, technology, and innovation",
+      status: 'PUBLISHED' as const,
+    },
+    {
+      title: "History & Geography",
+      description: "Historical events and geographical facts",
+      status: 'DRAFT' as const,
+    },
+    {
+      title: "Sports & Entertainment",
+      description: "Questions about sports, movies, music, and entertainment",
+      status: 'PUBLISHED' as const,
+    },
+  ];
+
+  for (const episodeData of sampleEpisodes) {
+    await prisma.episode.create({
+      data: episodeData,
+    });
+  }
+
   console.log('✅ Database seeded successfully!');
   console.log(`📝 Created ${sampleQuestions.length} participant questions`);
   console.log(`📝 Created ${audienceQuestions.length} audience questions`);
   console.log(`📝 Created ${yesNoQuestions.length} Yes/No questions`);
+  console.log(`📺 Created ${sampleEpisodes.length} episodes`);
   console.log('🔑 Admin credentials:');
   console.log('   Username: admin');
   console.log('   Password: admin123');
