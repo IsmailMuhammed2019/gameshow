@@ -211,7 +211,7 @@ let GameGateway = class GameGateway {
         try {
             console.log('Answer submission received:', data);
             console.log('Calling gameService.submitAnswer...');
-            const result = await this.gameService.submitAnswer(data.userId, data.questionId, data.gameSessionId, data.selectedOption);
+            const result = await this.gameService.submitAnswer(data.userId, data.questionId, data.gameSessionId, data.selectedOption, data.responseTime);
             console.log('Answer result:', result);
             const updatedUser = await this.gameService.getUserById(data.userId);
             client.emit('answer_submitted', {
@@ -225,6 +225,9 @@ let GameGateway = class GameGateway {
                 uniqueNumber: updatedUser.uniqueNumber,
                 role: updatedUser.role,
                 selectedOption: data.selectedOption,
+                isCorrect: result.isCorrect,
+                isWinner: result.isWinner,
+                responseTime: result.responseTime,
                 questionId: data.questionId,
                 gameSessionId: data.gameSessionId,
                 timestamp: new Date().toISOString(),
@@ -272,15 +275,21 @@ let GameGateway = class GameGateway {
                     role: answer.user?.role,
                 })),
             });
-            const correctAnswers = answers.filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT');
-            for (const correctAnswer of correctAnswers) {
+            const correctParticipantAnswers = answers
+                .filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT')
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            if (correctParticipantAnswers.length > 0) {
+                const firstWinner = correctParticipantAnswers[0];
                 this.server.emit('winner_announced', {
-                    userId: correctAnswer.userId,
-                    username: correctAnswer.user?.username,
-                    uniqueNumber: correctAnswer.user?.uniqueNumber,
-                    role: correctAnswer.user?.role,
+                    userId: firstWinner.userId,
+                    username: firstWinner.user?.username,
+                    uniqueNumber: firstWinner.user?.uniqueNumber,
+                    role: firstWinner.user?.role,
+                    responseTime: firstWinner.responseTime,
+                    questionId: data.questionId,
                 });
             }
+            this.broadcastUserList();
             return { success: true };
         }
         catch (error) {

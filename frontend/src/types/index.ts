@@ -51,6 +51,8 @@ export interface Winner {
   username: string;
   uniqueNumber: string;
   role: string;
+  responseTime?: number;
+  questionId?: string;
 }
 
 export interface GameState {

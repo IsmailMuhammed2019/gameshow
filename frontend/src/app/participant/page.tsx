@@ -23,6 +23,7 @@ export default function ParticipantPage() {
     answerResult,
     winners,
     participants,
+    audience,
     setGameSession,
     setCurrentQuestion,
     setAnswering,
@@ -145,7 +146,9 @@ export default function ParticipantPage() {
 
     newSocket.on('winner_announced', (winner: any) => {
       console.log('Winner announced:', winner);
+      console.log('Winner data:', JSON.stringify(winner, null, 2));
       addWinner(winner);
+      console.log('Current winners in store after adding:', winners.length + 1);
       setShowWinnerModal(true);
       // Auto-dismiss modal after 3 seconds
       setTimeout(() => {
@@ -160,7 +163,13 @@ export default function ParticipantPage() {
 
     newSocket.on('user_list_updated', (data: any) => {
       console.log('User list updated:', data);
-      // This helps track connected users
+      console.log('Participants count:', data.participants?.length || 0);
+      console.log('Audience count:', data.audience?.length || 0);
+      // Update participants and audience lists
+      setParticipants(data.participants || []);
+      setAudience(data.audience || []);
+      console.log('Updated store - participants:', data.participants || []);
+      console.log('Updated store - audience:', data.audience || []);
     });
 
     newSocket.on('scores_cleared', (data: any) => {
@@ -170,7 +179,9 @@ export default function ParticipantPage() {
         ...user,
         score: 0,
       });
+      // Clear winners list
       // Show notification
+      console.log('Score cleared! Refreshing participant list...');
       alert(`Scores have been cleared by the Game Master! Your score is now 0.`);
     });
 
@@ -263,8 +274,112 @@ export default function ParticipantPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Current Question */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Left Sidebar - Player Stats & Recent Winners */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Your Score */}
+          <Card className="score-display">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-white mb-2">
+                🏆 YOUR SCORE
+              </CardTitle>
+              <CardDescription className="text-orange-200">
+                Current points earned
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="text-6xl font-bold text-white mb-4">
+                {user.score || 0}
+              </div>
+              <p className="text-orange-200 font-medium">POINTS</p>
+              <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
+                <p className="text-sm text-white/80">Player ID</p>
+                <p className="text-2xl font-bold text-yellow-400">#{user.uniqueNumber}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Winners */}
+          <Card className="game-show-card">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold text-gray-800 text-center">
+                🏆 RECENT WINNERS
+              </CardTitle>
+              <CardDescription className="text-gray-600 text-center text-sm">
+                First to answer correctly
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                console.log('Rendering winners - Total:', winners.length);
+                console.log('Winners data:', winners);
+                console.log('Participant winners:', winners.filter(w => w.role === 'PARTICIPANT').length);
+                return null;
+              })()}
+              {winners.filter(w => w.role === 'PARTICIPANT').length > 0 ? (
+                <div className="space-y-3">
+                  {winners.filter(w => w.role === 'PARTICIPANT').slice(-3).map((winner, index) => (
+                    <div key={index} className="player-item p-3 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-300 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold shadow">
+                            🏆
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800 text-sm">{winner.username}</p>
+                            <p className="text-xs text-orange-600">#{winner.uniqueNumber}</p>
+                          </div>
+                        </div>
+                        {winner.responseTime !== undefined && winner.responseTime > 0 && (
+                          <div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                            ⏱️ {(winner.responseTime / 1000).toFixed(1)}s
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <div className="text-3xl mb-2">🎯</div>
+                  <p className="text-gray-500 text-sm font-medium">No winners yet</p>
+                  <p className="text-xs text-gray-400">Be first!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Game Status */}
+          <Card className="game-show-card">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold text-gray-800 text-center">
+                📊 GAME STATUS
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700 text-sm font-medium">Status:</span>
+                  <span className={`font-bold px-2 py-1 rounded-full text-xs ${
+                    gameSession?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {gameSession?.status === 'active' ? '🟢 LIVE' : '⏸️ WAITING'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                  <span className="text-gray-700 text-sm font-medium">Connection:</span>
+                  <span className={`font-bold px-2 py-1 rounded-full text-xs ${
+                    isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {isConnected ? '🟢 CONNECTED' : '🔴 OFFLINE'}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Center - Current Question */}
         <div className="lg:col-span-2">
           <Card className="question-display">
             <CardHeader className="text-center">
@@ -405,99 +520,20 @@ export default function ParticipantPage() {
           </Card>
         </div>
 
-        {/* Game Info */}
-        <div className="space-y-6">
-          <Card className="score-display">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-white mb-2">
-                🏆 YOUR SCORE
-              </CardTitle>
-              <CardDescription className="text-orange-200">
-                Current points earned
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="text-6xl font-bold text-white mb-4">
-                {user.score || 0}
-              </div>
-              <p className="text-orange-200 font-medium">POINTS</p>
-              <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
-                <p className="text-sm text-white/80">Current Rank</p>
-                <p className="text-2xl font-bold text-yellow-400">#{user.score || 0}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="game-show-card">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-gray-800 text-center">
-                📊 GAME STATUS
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-700 font-medium">Status:</span>
-                  <span className={`font-bold px-3 py-1 rounded-full text-sm ${
-                    gameSession?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {gameSession?.status === 'active' ? '🟢 LIVE' : '⏸️ WAITING'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-700 font-medium">Connection:</span>
-                  <span className={`font-bold px-3 py-1 rounded-full text-sm ${
-                    isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {isConnected ? '🟢 CONNECTED' : '🔴 DISCONNECTED'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-700 font-medium">Player ID:</span>
-                  <span className="font-bold text-orange-600">#{user.uniqueNumber}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="game-show-card">
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-gray-800 text-center">
-                🏆 RECENT WINNERS
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {winners.length > 0 ? (
-                <div className="space-y-3">
-                  {winners.slice(-5).map((winner, index) => (
-                    <div key={index} className="player-item p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">
-                          🏆
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-800">{winner.username}</p>
-                          <p className="text-sm text-orange-600">#{winner.uniqueNumber}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-2">🎯</div>
-                  <p className="text-gray-500 font-medium">No winners yet</p>
-                  <p className="text-sm text-gray-400">Be the first to answer correctly!</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Leaderboard */}
+        {/* Right Sidebar - Leaderboard */}
+        <div className="lg:col-span-1">
+          {(() => {
+            console.log('Rendering leaderboard - Participants:', participants.length);
+            console.log('Rendering leaderboard - Audience:', audience.length);
+            console.log('Participants data:', participants);
+            return null;
+          })()}
           <Leaderboard 
-            participants={participants} 
+            participants={participants}
+            role="PARTICIPANT"
+            title="🎯 Participant Leaderboard"
             currentUserId={user.id}
-            showTop={5}
+            showTop={10}
           />
         </div>
       </div>

@@ -15,9 +15,11 @@ export declare class GameService {
     getActiveQuestions(targetRole?: string): Promise<Question[]>;
     startGame(gameMasterId: string, episodeId?: string): Promise<GameSession>;
     getNextQuestion(gameSessionId: string, gameMasterId: string, targetRole?: string): Promise<Question>;
-    submitAnswer(userId: string, questionId: string, gameSessionId: string, selectedOption: number): Promise<{
+    submitAnswer(userId: string, questionId: string, gameSessionId: string, selectedOption: number, responseTime?: number): Promise<{
         isCorrect: boolean;
         correctAnswer: number;
+        isWinner: boolean;
+        responseTime: number;
     }>;
     endGame(gameSessionId: string, gameMasterId: string): Promise<any>;
     getUserById(userId: string): Promise<UserWithNumberScore>;

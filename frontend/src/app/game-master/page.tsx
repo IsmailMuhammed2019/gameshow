@@ -34,7 +34,7 @@ export default function GameMasterPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
-  const [targetRole, setTargetRole] = useState<'PARTICIPANT' | 'AUDIENCE' | 'BOTH'>('BOTH');
+  const [targetRole, setTargetRole] = useState<'PARTICIPANT' | 'AUDIENCE'>('PARTICIPANT');
   const [answerNotifications, setAnswerNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -71,22 +71,23 @@ export default function GameMasterPage() {
     }
   };
 
-  const sendSelectedQuestion = useCallback((questionId: string, targetRole: 'PARTICIPANT' | 'AUDIENCE') => {
+  const sendSelectedQuestion = useCallback((questionId: string) => {
     const currentSocket = socketRef.current;
     const currentGameSession = gameSessionRef.current;
+    const currentTargetRole = targetRole; // Use the episode's target role
 
     if (currentSocket && currentGameSession) {
       currentSocket.emit('send_specific_question', {
         gameSessionId: currentGameSession.id,
         questionId: questionId,
-        targetRole: targetRole,
+        targetRole: currentTargetRole,
       });
       setShowQuestionSelector(false);
       setSelectedQuestionId('');
     } else {
       alert('Game session not active. Please start the game first.');
     }
-  }, []);
+  }, [targetRole]);
   
   // Use refs to avoid dependency issues
   const socketRef = useRef<any>(null);
@@ -260,9 +261,6 @@ export default function GameMasterPage() {
           question = questionData.participantQuestion;
         } else if (targetRole === 'AUDIENCE' && questionData.audienceQuestion) {
           question = questionData.audienceQuestion;
-        } else if (targetRole === 'BOTH') {
-          // For both, show participant question by default
-          question = questionData.participantQuestion || questionData.audienceQuestion;
         } else {
           // Fallback to any available question
           question = questionData.participantQuestion || questionData.audienceQuestion || questionData;
@@ -472,24 +470,64 @@ export default function GameMasterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Episode Selection */}
+            {/* Role Selection - Choose First */}
             <div className="space-y-3">
-              <label className="text-white font-medium">Select Episode:</label>
+              <label className="text-white font-medium">1️⃣ Select Target Role:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setTargetRole('PARTICIPANT');
+                    setSelectedEpisode(''); // Reset episode when changing role
+                  }}
+                  className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                    targetRole === 'PARTICIPANT'
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                  }`}
+                >
+                  🎯 Participants
+                </button>
+                <button
+                  onClick={() => {
+                    setTargetRole('AUDIENCE');
+                    setSelectedEpisode(''); // Reset episode when changing role
+                  }}
+                  className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                    targetRole === 'AUDIENCE'
+                      ? 'bg-teal-500 text-white shadow-lg'
+                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                  }`}
+                >
+                  👀 Audience
+                </button>
+              </div>
+            </div>
+
+            {/* Episode Selection - Filtered by Role */}
+            <div className="space-y-3">
+              <label className="text-white font-medium">2️⃣ Select Episode:</label>
               <select
                 value={selectedEpisode}
                 onChange={(e) => setSelectedEpisode(e.target.value)}
                 className="w-full p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-orange-500 focus:outline-none"
               >
-                <option value="">🎲 Random Questions (No Episode)</option>
-                {episodes.filter(ep => ep.status === 'PUBLISHED').map((episode) => (
-                  <option key={episode.id} value={episode.id}>
-                    📺 {episode.title} ({episode._count?.questions || 0} questions)
-                  </option>
-                ))}
+                <option value="">-- Select an Episode --</option>
+                {episodes
+                  .filter(ep => ep.status === 'PUBLISHED' && ep.targetRole === targetRole)
+                  .map((episode) => (
+                    <option key={episode.id} value={episode.id}>
+                      📺 {episode.title} ({episode._count?.questions || 0} questions)
+                    </option>
+                  ))}
               </select>
+              {episodes.filter(ep => ep.status === 'PUBLISHED' && ep.targetRole === targetRole).length === 0 && (
+                <div className="text-xs text-yellow-300 bg-yellow-500/10 p-2 rounded">
+                  ⚠️ No {targetRole === 'PARTICIPANT' ? 'participant' : 'audience'} episodes available
+                </div>
+              )}
               {selectedEpisode && (
-                <div className="text-xs text-orange-300 bg-orange-500/10 p-2 rounded">
-                  ℹ️ Questions will be selected from this episode
+                <div className="text-xs text-green-300 bg-green-500/10 p-2 rounded">
+                  ✅ Episode selected for {targetRole === 'PARTICIPANT' ? 'participants' : 'audience'}
                 </div>
               )}
             </div>
@@ -606,22 +644,36 @@ export default function GameMasterPage() {
                     {currentQuestion.question || 'No question available'}
                   </p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {currentQuestion.options && currentQuestion.options.map((option, index) => (
                       <div 
                         key={index}
-                      className={`p-4 rounded-xl border-2 transition-all duration-300 ${
+                      className={`p-4 rounded-xl border-2 transition-all duration-300 relative ${
                         index === (currentQuestion.correctAnswer || -1)
-                          ? 'border-green-400 bg-green-500/20 text-green-300' 
+                          ? 'border-green-400 bg-green-500/30 text-green-100 shadow-lg shadow-green-500/50' 
                           : 'border-orange-400/50 bg-orange-500/10 text-orange-200'
                       }`}
                     >
-                      <span className="font-bold text-2xl text-orange-400 mr-3">
+                      <span className={`font-bold text-2xl mr-3 ${
+                        index === (currentQuestion.correctAnswer || -1) ? 'text-green-300' : 'text-orange-400'
+                      }`}>
                         {String.fromCharCode(65 + index)}
                       </span>
                       <span className="text-lg font-medium">{option}</span>
+                      {index === (currentQuestion.correctAnswer || -1) && (
+                        <span className="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+                          ✓ CORRECT
+                        </span>
+                      )}
                       </div>
                     ))}
+                  </div>
+                  <div className="bg-gradient-to-r from-green-600 to-green-700 p-4 rounded-xl text-center shadow-lg">
+                    <p className="text-white font-bold text-lg">
+                      ✅ Correct Answer: {currentQuestion.correctAnswer !== undefined && currentQuestion.options 
+                        ? `${String.fromCharCode(65 + currentQuestion.correctAnswer)} - ${currentQuestion.options[currentQuestion.correctAnswer]}`
+                        : 'N/A'}
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -743,29 +795,36 @@ export default function GameMasterPage() {
           </CardContent>
         </Card>
 
-        {/* Recent Winners */}
+        {/* Recent Winners - Participants Only (First to Answer) */}
         <Card className="game-show-card">
           <CardHeader className="text-center">
             <CardTitle className="text-xl font-bold text-gray-800">
-              🏆 RECENT WINNERS
+              🏆 RECENT WINNERS (Participants)
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Latest correct answers
+              First to answer correctly
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {winners.length > 0 ? (
+            {winners.filter(w => w.role === 'PARTICIPANT').length > 0 ? (
               <div className="space-y-3">
-                {winners.slice(-5).map((winner, index) => (
-                  <div key={index} className="player-item p-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">
-                        🏆
+                {winners.filter(w => w.role === 'PARTICIPANT').slice(-5).map((winner, index) => (
+                  <div key={index} className="player-item p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                          🏆
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800 text-lg">{winner.username}</p>
+                          <p className="text-sm text-orange-600 font-semibold">#{winner.uniqueNumber}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-gray-800">{winner.username}</p>
-                        <p className="text-sm text-orange-600">#{winner.uniqueNumber}</p>
-                      </div>
+                      {winner.responseTime !== undefined && winner.responseTime > 0 && (
+                        <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          ⏱️ {(winner.responseTime / 1000).toFixed(2)}s
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -774,15 +833,26 @@ export default function GameMasterPage() {
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">🎯</div>
                 <p className="text-gray-500 font-medium">No winners yet</p>
-                <p className="text-sm text-gray-400">Players will appear here when they answer correctly!</p>
+                <p className="text-sm text-gray-400">First participant to answer correctly wins!</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Leaderboard */}
+        {/* Participant Leaderboard */}
         <Leaderboard 
-          participants={participants} 
+          participants={[...participants, ...audience]}
+          role="PARTICIPANT"
+          title="🎯 Participant Leaderboard"
+          showTop={10}
+          className="lg:col-span-3"
+        />
+
+        {/* Audience Leaderboard */}
+        <Leaderboard 
+          participants={[...participants, ...audience]}
+          role="AUDIENCE"
+          title="👥 Audience Leaderboard"
           showTop={10}
           className="lg:col-span-3"
         />
@@ -879,28 +949,15 @@ export default function GameMasterPage() {
                     </div>
                     <div className="flex gap-2 pt-2 border-t">
                       <Button
-                        onClick={() => sendSelectedQuestion(question.id, 'PARTICIPANT')}
-                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                        onClick={() => sendSelectedQuestion(question.id)}
+                        className={`w-full font-bold ${
+                          targetRole === 'PARTICIPANT'
+                            ? 'bg-blue-500 hover:bg-blue-600'
+                            : 'bg-teal-500 hover:bg-teal-600'
+                        } text-white`}
                         disabled={!question.isActive}
                       >
-                        👥 Send to Participants
-                      </Button>
-                      <Button
-                        onClick={() => sendSelectedQuestion(question.id, 'AUDIENCE')}
-                        className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
-                        disabled={!question.isActive}
-                      >
-                        👀 Send to Audience
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          sendSelectedQuestion(question.id, 'PARTICIPANT');
-                          setTimeout(() => sendSelectedQuestion(question.id, 'AUDIENCE'), 100);
-                        }}
-                        className="flex-1 bg-purple-500 hover:bg-purple-600 text-white"
-                        disabled={!question.isActive}
-                      >
-                        🌟 Send to Both
+                        {targetRole === 'PARTICIPANT' ? '👥 Send to Participants' : '👀 Send to Audience'}
                       </Button>
                     </div>
                   </div>

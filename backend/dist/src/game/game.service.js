@@ -118,7 +118,7 @@ let GameService = class GameService {
         });
         return randomQuestion;
     }
-    async submitAnswer(userId, questionId, gameSessionId, selectedOption) {
+    async submitAnswer(userId, questionId, gameSessionId, selectedOption, responseTime) {
         const user = await this.prisma.user.findUnique({ where: { id: userId } });
         const question = await this.prisma.question.findUnique({ where: { id: questionId } });
         const gameSession = await this.prisma.gameSession.findUnique({ where: { id: gameSessionId } });
@@ -132,7 +132,20 @@ let GameService = class GameService {
             throw new common_1.BadRequestException('User already answered this question');
         }
         const isCorrect = selectedOption === question.correctAnswer;
-        const responseTime = 0;
+        const calculatedResponseTime = responseTime || 0;
+        let isWinner = false;
+        if (isCorrect && user.role === 'PARTICIPANT') {
+            const existingCorrectAnswers = await this.prisma.answer.findMany({
+                where: {
+                    questionId,
+                    gameSessionId,
+                    isCorrect: true,
+                },
+                include: { user: true },
+            });
+            const participantCorrectAnswers = existingCorrectAnswers.filter(answer => answer.user.role === 'PARTICIPANT');
+            isWinner = participantCorrectAnswers.length === 0;
+        }
         await this.prisma.$transaction(async (tx) => {
             await tx.answer.create({
                 data: {
@@ -141,10 +154,10 @@ let GameService = class GameService {
                     gameSessionId,
                     selectedOption,
                     isCorrect,
-                    responseTime,
+                    responseTime: calculatedResponseTime,
                 },
             });
-            if (isCorrect && user.role === 'PARTICIPANT') {
+            if (isWinner && user.role === 'PARTICIPANT') {
                 await tx.user.update({
                     where: { id: userId },
                     data: { score: { increment: 1 } },
@@ -154,6 +167,8 @@ let GameService = class GameService {
         return {
             isCorrect,
             correctAnswer: question.correctAnswer,
+            isWinner,
+            responseTime: calculatedResponseTime,
         };
     }
     async endGame(gameSessionId, gameMasterId) {

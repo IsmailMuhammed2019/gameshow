@@ -128,6 +128,8 @@ export declare class GameController {
     submitAnswer(submitAnswerDto: SubmitAnswerDto, req: any): Promise<{
         isCorrect: boolean;
         correctAnswer: number;
+        isWinner: boolean;
+        responseTime: number;
     }>;
     endGame(sessionId: string, req: any): Promise<any>;
     getGameSession(sessionId: string): Promise<Omit<{

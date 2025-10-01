@@ -63,11 +63,14 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         questionId: string;
         gameSessionId: string;
         selectedOption: number;
+        responseTime?: number;
     }): Promise<{
         success: boolean;
         result: {
             isCorrect: boolean;
             correctAnswer: number;
+            isWinner: boolean;
+            responseTime: number;
         };
         error?: undefined;
     } | {

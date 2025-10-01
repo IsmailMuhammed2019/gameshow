@@ -154,7 +154,8 @@ export class GameService {
     questionId: string,
     gameSessionId: string,
     selectedOption: number,
-  ): Promise<{ isCorrect: boolean; correctAnswer: number }> {
+    responseTime?: number,
+  ): Promise<{ isCorrect: boolean; correctAnswer: number; isWinner: boolean; responseTime: number }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const question = await this.prisma.question.findUnique({ where: { id: questionId } });
     const gameSession = await this.prisma.gameSession.findUnique({ where: { id: gameSessionId } });
@@ -173,7 +174,27 @@ export class GameService {
     }
 
     const isCorrect = selectedOption === question.correctAnswer;
-    const responseTime = 0; // Response time in milliseconds (0 for now, can be improved later)
+    const calculatedResponseTime = responseTime || 0;
+
+    // Check if this is the first correct answer for participants
+    let isWinner = false;
+    if (isCorrect && user.role === 'PARTICIPANT') {
+      const existingCorrectAnswers = await this.prisma.answer.findMany({
+        where: {
+          questionId,
+          gameSessionId,
+          isCorrect: true,
+        },
+        include: { user: true },
+      });
+
+      // Only participants who are first to answer correctly are winners
+      const participantCorrectAnswers = existingCorrectAnswers.filter(
+        answer => answer.user.role === 'PARTICIPANT'
+      );
+
+      isWinner = participantCorrectAnswers.length === 0; // First correct participant answer
+    }
 
     // Save the answer and update user score in a transaction
     await this.prisma.$transaction(async (tx) => {
@@ -184,12 +205,12 @@ export class GameService {
           gameSessionId,
           selectedOption,
           isCorrect,
-          responseTime,
+          responseTime: calculatedResponseTime,
         },
       });
 
-      // Only update score for PARTICIPANTS, not AUDIENCE
-      if (isCorrect && user.role === 'PARTICIPANT') {
+      // Only update score for PARTICIPANTS who win (first correct answer)
+      if (isWinner && user.role === 'PARTICIPANT') {
         await tx.user.update({
           where: { id: userId },
           data: { score: { increment: 1 } },
@@ -200,6 +221,8 @@ export class GameService {
     return {
       isCorrect,
       correctAnswer: question.correctAnswer,
+      isWinner,
+      responseTime: calculatedResponseTime,
     };
   }
 

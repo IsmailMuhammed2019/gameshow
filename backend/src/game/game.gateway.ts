@@ -290,7 +290,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('submit_answer')
   async handleSubmitAnswer(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId: string; questionId: string; gameSessionId: string; selectedOption: number },
+    @MessageBody() data: { userId: string; questionId: string; gameSessionId: string; selectedOption: number; responseTime?: number },
   ) {
     try {
       console.log('Answer submission received:', data);
@@ -300,6 +300,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         data.questionId,
         data.gameSessionId,
         data.selectedOption,
+        data.responseTime,
       );
       console.log('Answer result:', result);
 
@@ -311,6 +312,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('answer_submitted', {
         submitted: true,
         selectedOption: data.selectedOption,
+        // Don't send isCorrect or isWinner - keep it secret until reveal
         message: 'Answer submitted! Waiting for game master to reveal results...',
       });
 
@@ -321,17 +323,30 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         uniqueNumber: updatedUser.uniqueNumber,
         role: updatedUser.role,
         selectedOption: data.selectedOption,
+        isCorrect: result.isCorrect,
+        isWinner: result.isWinner,
+        responseTime: result.responseTime,
         questionId: data.questionId,
         gameSessionId: data.gameSessionId,
         timestamp: new Date().toISOString(),
       });
 
+      // Don't announce winner immediately - wait for game master to reveal
+      // Winner will be announced when the game master clicks "Reveal Answer"
+      // if (result.isWinner && updatedUser.role === 'PARTICIPANT') {
+      //   this.server.emit('winner_announced', {
+      //     userId: data.userId,
+      //     username: updatedUser.username,
+      //     uniqueNumber: updatedUser.uniqueNumber,
+      //     role: updatedUser.role,
+      //     responseTime: result.responseTime,
+      //     questionId: data.questionId,
+      //   });
+      // }
+
       // Update game session state after answer submission
       const updatedGameSession = await this.gameService.getGameSession(data.gameSessionId);
       this.server.emit('game_session_updated', updatedGameSession);
-
-      // Don't announce winners immediately - wait for game master to reveal answers
-      // Winners will be announced when the game master reveals the answer
 
       // Update user list to reflect score changes
       this.broadcastUserList();
@@ -391,16 +406,25 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         })),
       });
 
-      // Announce winners for correct answers (only for participants)
-      const correctAnswers = answers.filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT');
-      for (const correctAnswer of correctAnswers) {
+      // Announce only the FIRST winner (first correct answer for participants)
+      const correctParticipantAnswers = answers
+        .filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT')
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      
+      if (correctParticipantAnswers.length > 0) {
+        const firstWinner = correctParticipantAnswers[0];
         this.server.emit('winner_announced', {
-          userId: correctAnswer.userId,
-          username: correctAnswer.user?.username,
-          uniqueNumber: correctAnswer.user?.uniqueNumber,
-          role: correctAnswer.user?.role,
+          userId: firstWinner.userId,
+          username: firstWinner.user?.username,
+          uniqueNumber: firstWinner.user?.uniqueNumber,
+          role: firstWinner.user?.role,
+          responseTime: firstWinner.responseTime,
+          questionId: data.questionId,
         });
       }
+
+      // Broadcast updated user list to refresh leaderboards with new scores
+      this.broadcastUserList();
 
       return { success: true };
     } catch (error) {

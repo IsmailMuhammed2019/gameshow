@@ -10,25 +10,34 @@ interface LeaderboardProps {
   currentUserId?: string;
   showTop?: number;
   className?: string;
+  title?: string;
+  role?: 'PARTICIPANT' | 'AUDIENCE';
 }
 
 export default function Leaderboard({ 
   participants, 
   currentUserId, 
   showTop = 10, 
-  className = '' 
+  className = '',
+  title = 'Leaderboard',
+  role = 'PARTICIPANT',
 }: LeaderboardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
-  // Sort participants by score (descending) and then by username (ascending)
-  const sortedParticipants = [...participants]
+  // Filter by role if specified
+  const filteredParticipants = role 
+    ? participants.filter(p => p.role === role)
+    : participants;
+  
+  // Sort by score (descending) and then by username (ascending)
+  const sortedParticipants = [...filteredParticipants]
     .sort((a, b) => {
       if (b.score !== a.score) {
         return b.score - a.score;
       }
       return a.username.localeCompare(b.username);
     })
-    .slice(0, isExpanded ? participants.length : showTop);
+    .slice(0, isExpanded ? filteredParticipants.length : showTop);
 
   const getRankIcon = (index: number) => {
     switch (index) {
@@ -64,14 +73,14 @@ export default function Leaderboard({
         <CardTitle className="text-white flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Trophy className="w-5 h-5 text-gold-500" />
-            <span>Leaderboard</span>
+            <span>{title}</span>
           </div>
-          {participants.length > showTop && (
+          {filteredParticipants.length > showTop && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="text-sm text-white/70 hover:text-white transition-colors"
             >
-              {isExpanded ? 'Show Less' : `Show All (${participants.length})`}
+              {isExpanded ? 'Show Less' : `Show All (${filteredParticipants.length})`}
             </button>
           )}
         </CardTitle>
@@ -124,11 +133,13 @@ export default function Leaderboard({
           )}
         </div>
         
-        {participants.length > 0 && (
+        {filteredParticipants.length > 0 && (
           <div className="mt-4 pt-3 border-t border-white/20">
             <div className="flex justify-between text-sm text-white/70">
-              <span>Total Participants: {participants.length}</span>
-              <span>Your Rank: #{sortedParticipants.findIndex(p => p.id === currentUserId) + 1 || 'N/A'}</span>
+              <span>Total {role === 'PARTICIPANT' ? 'Participants' : 'Audience'}: {filteredParticipants.length}</span>
+              {currentUserId && (
+                <span>Your Rank: #{sortedParticipants.findIndex(p => p.id === currentUserId) + 1 || 'N/A'}</span>
+              )}
             </div>
           </div>
         )}

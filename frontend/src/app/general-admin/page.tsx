@@ -27,6 +27,7 @@ interface Episode {
   title: string;
   description?: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  targetRole: 'PARTICIPANT' | 'AUDIENCE';
   isActive: boolean;
   createdAt: string;
   questions: Question[];
@@ -43,7 +44,7 @@ export default function GeneralAdminPage() {
   const [audienceQuestions, setAudienceQuestions] = useState<Question[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'episodes' | 'participant' | 'audience'>('episodes');
+  const [activeTab, setActiveTab] = useState<'participant-episodes' | 'audience-episodes'>('participant-episodes');
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
   const [newQuestion, setNewQuestion] = useState({
     question: '',
@@ -58,6 +59,7 @@ export default function GeneralAdminPage() {
     title: '',
     description: '',
     status: 'DRAFT' as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+    targetRole: 'PARTICIPANT' as 'PARTICIPANT' | 'AUDIENCE',
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEpisodeDialogOpen, setIsEpisodeDialogOpen] = useState(false);
@@ -133,11 +135,13 @@ export default function GeneralAdminPage() {
         title: '',
         description: '',
         status: 'DRAFT',
+        targetRole: 'PARTICIPANT',
       });
       setIsEpisodeDialogOpen(false);
       fetchQuestions();
     } catch (error) {
       console.error('Error creating episode:', error);
+      alert('Failed to create episode. Please check all required fields.');
     }
   };
 
@@ -188,12 +192,12 @@ export default function GeneralAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-blue-500 via-light-blue-500 to-teal-500">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-600 to-teal-600 rounded-xl p-6 shadow-2xl">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Game Management</h1>
-            <p className="text-light-blue-100">Manage episodes and questions for the game</p>
+            <h1 className="text-4xl font-bold text-white mb-2">🎮 Game Management Portal</h1>
+            <p className="text-blue-100 text-lg">Create and manage role-specific episodes</p>
           </div>
           <div className="flex gap-4">
             <Button
@@ -213,16 +217,9 @@ export default function GeneralAdminPage() {
           </div>
         </div>
 
-        <div className="mb-6">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-gold-500 hover:bg-gold-600 text-white"
-              >
-                ➕ Add New Question
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-white">
+        {/* Question Creation Dialog (Opened from Episode Cards) */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="bg-white">
               <DialogHeader>
                 <DialogTitle>Create New Question</DialogTitle>
               </DialogHeader>
@@ -287,35 +284,40 @@ export default function GeneralAdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Target Role *</label>
+                  <label className="block text-sm font-medium mb-2">Episode *</label>
                   <select
-                    value={newQuestion.targetRole}
-                    onChange={(e) => setNewQuestion({ ...newQuestion, targetRole: e.target.value as 'PARTICIPANT' | 'AUDIENCE' })}
+                    value={newQuestion.episodeId}
+                    onChange={(e) => {
+                      const episodeId = e.target.value;
+                      const selectedEp = episodes.find(ep => ep.id === episodeId);
+                      setNewQuestion({ 
+                        ...newQuestion, 
+                        episodeId: episodeId,
+                        targetRole: selectedEp?.targetRole || 'PARTICIPANT' // Inherit from episode
+                      });
+                    }}
                     className="w-full p-2 border rounded"
                     required
                   >
-                    <option value="PARTICIPANT">🎯 Participant (Harder Questions)</option>
-                    <option value="AUDIENCE">👥 Audience (Easier Questions)</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Select who should receive this question
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Episode (Optional)</label>
-                  <select
-                    value={newQuestion.episodeId}
-                    onChange={(e) => setNewQuestion({ ...newQuestion, episodeId: e.target.value })}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="">No Episode (General Question)</option>
+                    <option value="">-- Select an Episode --</option>
                     {episodes.map((episode) => (
                       <option key={episode.id} value={episode.id}>
-                        {episode.title} ({episode.status})
+                        {episode.targetRole === 'PARTICIPANT' ? '🎯' : '👥'} {episode.title} ({episode.status})
                       </option>
                     ))}
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Question will inherit the target role from the selected episode
+                  </p>
                 </div>
+                {newQuestion.episodeId && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                    <p className="text-sm text-blue-800">
+                      <strong>Target Role:</strong> {newQuestion.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                      <span className="text-xs text-blue-600 ml-2">(Inherited from episode)</span>
+                    </p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium mb-2">Question Type</label>
                   <select
@@ -342,60 +344,68 @@ export default function GeneralAdminPage() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
 
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-white/10 rounded-lg p-1">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-2xl p-8 border-4 border-blue-500">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-3xl font-bold text-gray-800">📋 Episode Management</h2>
+              <div className="text-sm bg-gradient-to-r from-blue-500 to-teal-500 text-white px-4 py-2 rounded-full font-semibold">
+                Episodes: {episodes.length} | Questions: {participantQuestions.length + audienceQuestions.length}
+              </div>
+            </div>
+            <p className="text-gray-600 text-base mb-6">
+              Create role-specific episodes and add questions to them. Each episode is designed for either participants or audience.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-400 rounded-lg p-4 shadow-lg">
+                <div className="font-bold text-blue-800 mb-2 text-lg">🎯 Participant Episodes</div>
+                <div className="text-blue-600 font-medium">For competitive players • Harder questions • Difficulty 6-10</div>
+              </div>
+              <div className="bg-gradient-to-br from-teal-50 to-teal-100 border-2 border-teal-400 rounded-lg p-4 shadow-lg">
+                <div className="font-bold text-teal-800 mb-2 text-lg">👥 Audience Episodes</div>
+                <div className="text-teal-600 font-medium">For spectators • Easier questions • Difficulty 1-5</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex space-x-3 bg-white rounded-lg p-2 mt-6 shadow-xl">
             <button
-              onClick={() => setActiveTab('episodes')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'episodes'
-                  ? 'bg-gold-500 text-white shadow-md'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              onClick={() => setActiveTab('participant-episodes')}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
+                activeTab === 'participant-episodes'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              📺 Episodes ({episodes.length})
+              🎯 Participant Episodes ({episodes.filter(e => e.targetRole === 'PARTICIPANT').length})
             </button>
             <button
-              onClick={() => setActiveTab('participant')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'participant'
-                  ? 'bg-gold-500 text-white shadow-md'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
+              onClick={() => setActiveTab('audience-episodes')}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
+                activeTab === 'audience-episodes'
+                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              🎯 Participant Questions ({participantQuestions.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('audience')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'audience'
-                  ? 'bg-gold-500 text-white shadow-md'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              👥 Audience Questions ({audienceQuestions.length})
+              👥 Audience Episodes ({episodes.filter(e => e.targetRole === 'AUDIENCE').length})
             </button>
           </div>
-          <p className="text-white/60 text-sm mt-2 text-center">
-            💡 Tabs are for viewing only. You can add questions with any role from the "Add New Question" button or episode cards.
-          </p>
         </div>
 
-        {/* Episodes Section */}
-        {activeTab === 'episodes' && (
+        {/* Participant Episodes Section */}
+        {activeTab === 'participant-episodes' && (
           <>
             <div className="mb-6">
               <Dialog open={isEpisodeDialogOpen} onOpenChange={setIsEpisodeDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-gold-500 hover:bg-gold-600 text-white">
-                    Create New Episode
+                    Create New Participant Episode
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-white">
                   <DialogHeader>
-                    <DialogTitle>Create New Episode</DialogTitle>
+                    <DialogTitle>Create New Participant Episode</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -403,7 +413,7 @@ export default function GeneralAdminPage() {
                       <Input
                         value={newEpisode.title}
                         onChange={(e) => setNewEpisode({ ...newEpisode, title: e.target.value })}
-                        placeholder="Enter episode title..."
+                        placeholder="e.g., Science Masters Round 1"
                       />
                     </div>
                     <div>
@@ -411,8 +421,15 @@ export default function GeneralAdminPage() {
                       <Input
                         value={newEpisode.description}
                         onChange={(e) => setNewEpisode({ ...newEpisode, description: e.target.value })}
-                        placeholder="Enter episode description..."
+                        placeholder="Challenging questions for competitive players"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Target Role</label>
+                      <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded">
+                        <strong className="text-blue-800">🎯 Participant</strong>
+                        <p className="text-xs text-blue-600 mt-1">All questions in this episode will be for participants</p>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Status</label>
@@ -426,27 +443,246 @@ export default function GeneralAdminPage() {
                         <option value="ARCHIVED">Archived</option>
                       </select>
                     </div>
-                    <Button onClick={handleCreateEpisode} className="w-full bg-teal-500 hover:bg-teal-600">
-                      Create Episode
+                    <Button 
+                      onClick={() => {
+                        setNewEpisode({ ...newEpisode, targetRole: 'PARTICIPANT' });
+                        handleCreateEpisode();
+                      }} 
+                      className="w-full bg-blue-500 hover:bg-blue-600"
+                    >
+                      Create Participant Episode
                     </Button>
                   </div>
                 </DialogContent>
               </Dialog>
             </div>
 
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold text-white mb-2">📺 Episodes</h2>
-              <p className="text-white/80">Manage game episodes and their questions</p>
+            <div className="mb-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 shadow-xl">
+              <h2 className="text-3xl font-bold text-white mb-2">🎯 Participant Episodes</h2>
+              <p className="text-blue-100 text-lg">Episodes with harder questions for competitive players</p>
             </div>
 
-            <div className="grid gap-6">
-              {episodes.map((episode) => (
-                <Card key={episode.id} className="p-6 bg-white/90 backdrop-blur-sm">
+            {episodes.filter(e => e.targetRole === 'PARTICIPANT').length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-white rounded-xl p-10 max-w-lg mx-auto shadow-2xl border-4 border-blue-300">
+                  <div className="text-7xl mb-4">🎯</div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                    No Participant Episodes Yet
+                  </h3>
+                  <p className="text-gray-600 mb-6 text-lg">
+                    Create your first participant episode with competitive, challenging questions.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setNewEpisode({
+                        title: '',
+                        description: '',
+                        status: 'DRAFT',
+                        targetRole: 'PARTICIPANT',
+                      });
+                      setIsEpisodeDialogOpen(true);
+                    }}
+                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg px-8 py-3 shadow-lg"
+                  >
+                    ➕ Create First Participant Episode
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {episodes.filter(e => e.targetRole === 'PARTICIPANT').map((episode) => (
+                <Card key={episode.id} className="p-6 bg-white shadow-xl border-2 border-blue-200 hover:border-blue-400 transition-all">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-2xl font-bold text-gray-800">{episode.title}</h3>
+                        <div className="flex space-x-2">
+                          <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
+                            episode.targetRole === 'PARTICIPANT' 
+                              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                              : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
+                          }`}>
+                            {episode.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                          </span>
+                          <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
+                            episode.status === 'PUBLISHED' 
+                              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
+                              : episode.status === 'DRAFT'
+                              ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white'
+                              : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
+                          }`}>
+                            {episode.status}
+                          </span>
+                        </div>
+                      </div>
+                      {episode.description && (
+                        <p className="text-gray-700 mb-3 text-base">{episode.description}</p>
+                      )}
+                      <div className="flex gap-4 text-base text-gray-700 font-medium">
+                        <span className="bg-blue-50 px-3 py-1 rounded-full">📝 Questions: {episode._count.questions}</span>
+                        <span className="bg-gray-100 px-3 py-1 rounded-full">📅 {new Date(episode.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          setSelectedEpisode(episode);
+                          setNewQuestion({
+                            question: '',
+                            options: ['', '', '', ''],
+                            correctAnswer: 0,
+                            difficulty: 1,
+                            targetRole: episode.targetRole, // Inherit from episode
+                            questionType: 'MULTIPLE_CHOICE',
+                            episodeId: episode.id,
+                          });
+                          setIsDialogOpen(true);
+                        }}
+
+                        size="sm"
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold shadow-lg"
+                      >
+                        ➕ Add Question
+                      </Button>
+                      <Button
+                        onClick={() => handleViewEpisodeQuestions(episode)}
+                        size="sm"
+                        className="bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold shadow-md"
+                      >
+                        👁️ View ({episode._count.questions})
+                      </Button>
+                      <Button
+                        onClick={() => handleUpdateEpisodeStatus(episode.id, episode.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
+                        size="sm"
+                        className={episode.status === 'PUBLISHED' 
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold shadow-lg' 
+                          : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg'}
+                      >
+                        {episode.status === 'PUBLISHED' ? '📤 Unpublish' : '✅ Publish'}
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteEpisode(episode.id)}
+                        size="sm"
+                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-lg"
+                      >
+                        🗑️ Delete
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Audience Episodes Section */}
+        {activeTab === 'audience-episodes' && (
+          <>
+            <div className="mb-6">
+              <Dialog open={isEpisodeDialogOpen} onOpenChange={setIsEpisodeDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gold-500 hover:bg-gold-600 text-white">
+                    Create New Audience Episode
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white">
+                  <DialogHeader>
+                    <DialogTitle>Create New Audience Episode</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Episode Title</label>
+                      <Input
+                        value={newEpisode.title}
+                        onChange={(e) => setNewEpisode({ ...newEpisode, title: e.target.value })}
+                        placeholder="e.g., Fun Trivia Round 1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Description</label>
+                      <Input
+                        value={newEpisode.description}
+                        onChange={(e) => setNewEpisode({ ...newEpisode, description: e.target.value })}
+                        placeholder="Easy questions for audience engagement"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Target Role</label>
+                      <div className="w-full p-3 bg-teal-50 border border-teal-200 rounded">
+                        <strong className="text-teal-800">👥 Audience</strong>
+                        <p className="text-xs text-teal-600 mt-1">All questions in this episode will be for audience members</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Status</label>
+                      <select
+                        value={newEpisode.status}
+                        onChange={(e) => setNewEpisode({ ...newEpisode, status: e.target.value as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' })}
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="DRAFT">Draft</option>
+                        <option value="PUBLISHED">Published</option>
+                        <option value="ARCHIVED">Archived</option>
+                      </select>
+                    </div>
+                    <Button 
+                      onClick={() => {
+                        setNewEpisode({ ...newEpisode, targetRole: 'AUDIENCE' });
+                        handleCreateEpisode();
+                      }} 
+                      className="w-full bg-teal-500 hover:bg-teal-600"
+                    >
+                      Create Audience Episode
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="mb-6 bg-gradient-to-r from-teal-600 to-teal-700 rounded-xl p-6 shadow-xl">
+              <h2 className="text-3xl font-bold text-white mb-2">👥 Audience Episodes</h2>
+              <p className="text-teal-100 text-lg">Episodes with easier questions for audience engagement</p>
+            </div>
+
+            {episodes.filter(e => e.targetRole === 'AUDIENCE').length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-white rounded-xl p-10 max-w-lg mx-auto shadow-2xl border-4 border-teal-300">
+                  <div className="text-7xl mb-4">👥</div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                    No Audience Episodes Yet
+                  </h3>
+                  <p className="text-gray-600 mb-6 text-lg">
+                    Create your first audience episode with easy, engaging questions.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setNewEpisode({
+                        title: '',
+                        description: '',
+                        status: 'DRAFT',
+                        targetRole: 'AUDIENCE',
+                      });
+                      setIsEpisodeDialogOpen(true);
+                    }}
+                    className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold text-lg px-8 py-3 shadow-lg"
+                  >
+                    ➕ Create First Audience Episode
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {episodes.filter(e => e.targetRole === 'AUDIENCE').map((episode) => (
+                <Card key={episode.id} className="p-6 bg-white shadow-xl border-2 border-teal-200 hover:border-teal-400 transition-all">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-lg font-semibold">{episode.title}</h3>
                         <div className="flex space-x-2">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                            👥 Audience
+                          </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             episode.status === 'PUBLISHED' 
                               ? 'bg-green-100 text-green-800' 
@@ -475,121 +711,47 @@ export default function GeneralAdminPage() {
                             options: ['', '', '', ''],
                             correctAnswer: 0,
                             difficulty: 1,
-                            targetRole: 'PARTICIPANT', // Default but user can change
+                            targetRole: episode.targetRole,
                             questionType: 'MULTIPLE_CHOICE',
                             episodeId: episode.id,
                           });
                           setIsDialogOpen(true);
                         }}
-                        variant="default"
+
                         size="sm"
-                        className="bg-blue-500 hover:bg-blue-600"
+                        className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold shadow-lg"
                       >
-                        + Add Question
+                        ➕ Add Question
                       </Button>
                       <Button
                         onClick={() => handleViewEpisodeQuestions(episode)}
-                        variant="outline"
                         size="sm"
+                        className="bg-white border-2 border-teal-300 text-teal-700 hover:bg-teal-50 font-semibold shadow-md"
                       >
-                        View Questions ({episode._count.questions})
+                        👁️ View ({episode._count.questions})
                       </Button>
                       <Button
                         onClick={() => handleUpdateEpisodeStatus(episode.id, episode.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
-                        variant={episode.status === 'PUBLISHED' ? 'destructive' : 'default'}
                         size="sm"
+                        className={episode.status === 'PUBLISHED' 
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold shadow-lg' 
+                          : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg'}
                       >
-                        {episode.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                        {episode.status === 'PUBLISHED' ? '📤 Unpublish' : '✅ Publish'}
                       </Button>
                       <Button
                         onClick={() => handleDeleteEpisode(episode.id)}
-                        variant="destructive"
                         size="sm"
+                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-lg"
                       >
-                        Delete
+                        🗑️ Delete
                       </Button>
                     </div>
                   </div>
                 </Card>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Questions Section */}
-        {activeTab !== 'episodes' && (
-          <>
-            {/* Section Header */}
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold text-white mb-2">
-                {activeTab === 'participant' ? '🎯 Participant Questions' : '👥 Audience Questions'}
-              </h2>
-              <p className="text-white/80">
-                {activeTab === 'participant' 
-                  ? 'Questions specifically designed for game participants'
-                  : 'Questions designed for audience members to answer'
-                }
-              </p>
-            </div>
-
-            <div className="grid gap-6">
-              {(activeTab === 'participant' ? participantQuestions : audienceQuestions).map((question) => (
-                <Card key={question.id} className="p-6 bg-white/90 backdrop-blur-sm">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-semibold">{question.question}</h3>
-                        <div className="flex space-x-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            question.questionType === 'YES_NO' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-purple-100 text-purple-800'
-                          }`}>
-                            {question.questionType === 'YES_NO' ? 'Yes/No' : 'Multiple Choice'}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            question.targetRole === 'PARTICIPANT' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {question.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        {question.options.map((option, index) => (
-                          <div
-                            key={index}
-                            className={`p-2 rounded ${
-                              index === question.correctAnswer
-                                ? 'bg-green-100 text-green-800 border border-green-300'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {String.fromCharCode(65 + index)}. {option}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex gap-4 text-sm text-gray-600">
-                        <span>Difficulty: {question.difficulty}</span>
-                        <span>Role: {question.targetRole}</span>
-                        <span>Status: {question.isActive ? 'Active' : 'Inactive'}</span>
-                        {question.episodeId && <span>Episode: {question.episodeId}</span>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => toggleQuestionStatus(question.id, question.isActive)}
-                        variant={question.isActive ? 'destructive' : 'default'}
-                        size="sm"
-                      >
-                        {question.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 
