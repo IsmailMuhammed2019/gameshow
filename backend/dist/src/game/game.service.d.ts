@@ -23,6 +23,7 @@ export declare class GameService {
     }>;
     endGame(gameSessionId: string, gameMasterId: string): Promise<any>;
     getUserById(userId: string): Promise<UserWithNumberScore>;
+    updateUserScore(userId: string, points: number): Promise<void>;
     getGameSession(gameSessionId: string): Promise<GameSessionWithNumberScore>;
     getActiveGameSessions(): Promise<GameSessionWithNumberScore[]>;
     clearAllScores(gameMasterId: string): Promise<{

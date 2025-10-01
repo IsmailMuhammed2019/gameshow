@@ -503,6 +503,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Stop the timer when answers are revealed
       this.stopQuestionTimer();
       
+      // Update scores for correct answers NOW that the game master has revealed them
+      const correctAnswers = answers.filter(answer => answer.isCorrect);
+      for (const answer of correctAnswers) {
+        await this.gameService.updateUserScore(answer.userId, 1);
+      }
+
       // Broadcast the correct answer and results to all users
       this.server.emit('answer_revealed', {
         questionId: data.questionId,

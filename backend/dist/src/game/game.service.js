@@ -157,12 +157,6 @@ let GameService = class GameService {
                     responseTime: calculatedResponseTime,
                 },
             });
-            if (isCorrect && (user.role === 'PARTICIPANT' || user.role === 'AUDIENCE')) {
-                await tx.user.update({
-                    where: { id: userId },
-                    data: { score: { increment: 1 } },
-                });
-            }
         });
         return {
             isCorrect,
@@ -218,6 +212,12 @@ let GameService = class GameService {
             ...user,
             score: Number(user.score),
         };
+    }
+    async updateUserScore(userId, points) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { score: { increment: points } },
+        });
     }
     async getGameSession(gameSessionId) {
         const gameSession = await this.prisma.gameSession.findUnique({

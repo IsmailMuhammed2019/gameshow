@@ -356,6 +356,10 @@ let GameGateway = class GameGateway {
             }
             const answers = await this.gameService.getAnswersForQuestion(data.questionId, data.gameSessionId);
             this.stopQuestionTimer();
+            const correctAnswers = answers.filter(answer => answer.isCorrect);
+            for (const answer of correctAnswers) {
+                await this.gameService.updateUserScore(answer.userId, 1);
+            }
             this.server.emit('answer_revealed', {
                 questionId: data.questionId,
                 correctAnswer: question.correctAnswer,

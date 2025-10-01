@@ -209,13 +209,8 @@ export class GameService {
         },
       });
 
-      // Update score for both PARTICIPANTS and AUDIENCE who answer correctly
-      if (isCorrect && (user.role === 'PARTICIPANT' || user.role === 'AUDIENCE')) {
-        await tx.user.update({
-          where: { id: userId },
-          data: { score: { increment: 1 } },
-        });
-      }
+      // Don't update scores immediately - wait for game master to reveal answers
+      // Scores will be updated when the game master reveals the correct answers
     });
 
     return {
@@ -280,6 +275,13 @@ export class GameService {
       ...user,
       score: Number(user.score), // Convert BigInt to number
     };
+  }
+
+  async updateUserScore(userId: string, points: number): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { score: { increment: points } },
+    });
   }
 
   async getGameSession(gameSessionId: string): Promise<GameSessionWithNumberScore> {

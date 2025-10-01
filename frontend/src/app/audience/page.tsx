@@ -142,14 +142,8 @@ export default function AudiencePage() {
           submitted: true,
         });
         
-        // Update user score if correct
-        if (userAnswer.isCorrect) {
-          const { setUser } = useAuthStore.getState();
-          setUser({
-            ...user,
-            score: Number(user.score) + 1,
-          });
-        }
+        // Scores are now updated by the backend when answers are revealed
+        // No need to update frontend score here
       }
     });
 
