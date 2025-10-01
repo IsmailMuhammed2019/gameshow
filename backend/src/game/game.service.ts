@@ -176,9 +176,9 @@ export class GameService {
     const isCorrect = selectedOption === question.correctAnswer;
     const calculatedResponseTime = responseTime || 0;
 
-    // Check if this is the first correct answer for participants
+    // Check if this is the first correct answer for the user's role
     let isWinner = false;
-    if (isCorrect && user.role === 'PARTICIPANT') {
+    if (isCorrect && (user.role === 'PARTICIPANT' || user.role === 'AUDIENCE')) {
       const existingCorrectAnswers = await this.prisma.answer.findMany({
         where: {
           questionId,
@@ -188,12 +188,12 @@ export class GameService {
         include: { user: true },
       });
 
-      // Only participants who are first to answer correctly are winners
-      const participantCorrectAnswers = existingCorrectAnswers.filter(
-        answer => answer.user.role === 'PARTICIPANT'
+      // Check if this is the first correct answer for this user's role
+      const roleCorrectAnswers = existingCorrectAnswers.filter(
+        answer => answer.user.role === user.role
       );
 
-      isWinner = participantCorrectAnswers.length === 0; // First correct participant answer
+      isWinner = roleCorrectAnswers.length === 0; // First correct answer for this role
     }
 
     // Save the answer and update user score in a transaction
@@ -209,8 +209,8 @@ export class GameService {
         },
       });
 
-      // Only update score for PARTICIPANTS who win (first correct answer)
-      if (isWinner && user.role === 'PARTICIPANT') {
+      // Update score for both PARTICIPANTS and AUDIENCE who answer correctly
+      if (isCorrect && (user.role === 'PARTICIPANT' || user.role === 'AUDIENCE')) {
         await tx.user.update({
           where: { id: userId },
           data: { score: { increment: 1 } },

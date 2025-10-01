@@ -75,6 +75,7 @@ let GameGateway = class GameGateway {
             .filter(user => user.role === 'PARTICIPANT');
         const audience = Array.from(this.connectedUsers.values())
             .filter(user => user.role === 'AUDIENCE');
+        console.log('Broadcasting user list - Participants:', participants.length, 'Audience:', audience.length);
         const participantDetails = await Promise.all(participants.map(async (user) => {
             try {
                 const userDetails = await this.gameService.getUserById(user.userId);
@@ -119,6 +120,8 @@ let GameGateway = class GameGateway {
                 };
             }
         }));
+        console.log('Sending user_list_updated - Participant scores:', participantDetails.map(p => ({ username: p.username, score: p.score })));
+        console.log('Sending user_list_updated - Audience scores:', audienceDetails.map(a => ({ username: a.username, score: a.score })));
         this.server.emit('user_list_updated', {
             participants: participantDetails,
             audience: audienceDetails,
@@ -368,14 +371,28 @@ let GameGateway = class GameGateway {
             const correctParticipantAnswers = answers
                 .filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT')
                 .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const correctAudienceAnswers = answers
+                .filter(answer => answer.isCorrect && answer.user?.role === 'AUDIENCE')
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
             if (correctParticipantAnswers.length > 0) {
-                const firstWinner = correctParticipantAnswers[0];
+                const firstParticipantWinner = correctParticipantAnswers[0];
                 this.server.emit('winner_announced', {
-                    userId: firstWinner.userId,
-                    username: firstWinner.user?.username,
-                    uniqueNumber: firstWinner.user?.uniqueNumber,
-                    role: firstWinner.user?.role,
-                    responseTime: firstWinner.responseTime,
+                    userId: firstParticipantWinner.userId,
+                    username: firstParticipantWinner.user?.username,
+                    uniqueNumber: firstParticipantWinner.user?.uniqueNumber,
+                    role: firstParticipantWinner.user?.role,
+                    responseTime: firstParticipantWinner.responseTime,
+                    questionId: data.questionId,
+                });
+            }
+            if (correctAudienceAnswers.length > 0) {
+                const firstAudienceWinner = correctAudienceAnswers[0];
+                this.server.emit('winner_announced', {
+                    userId: firstAudienceWinner.userId,
+                    username: firstAudienceWinner.user?.username,
+                    uniqueNumber: firstAudienceWinner.user?.uniqueNumber,
+                    role: firstAudienceWinner.user?.role,
+                    responseTime: firstAudienceWinner.responseTime,
                     questionId: data.questionId,
                 });
             }

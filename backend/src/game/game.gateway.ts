@@ -111,6 +111,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const audience = Array.from(this.connectedUsers.values())
       .filter(user => user.role === 'AUDIENCE');
 
+    console.log('Broadcasting user list - Participants:', participants.length, 'Audience:', audience.length);
+
     // Get user details for participants
     const participantDetails = await Promise.all(
       participants.map(async (user) => {
@@ -161,6 +163,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       })
     );
 
+    console.log('Sending user_list_updated - Participant scores:', participantDetails.map(p => ({ username: p.username, score: p.score })));
+    console.log('Sending user_list_updated - Audience scores:', audienceDetails.map(a => ({ username: a.username, score: a.score })));
+    
     this.server.emit('user_list_updated', {
       participants: participantDetails,
       audience: audienceDetails,
@@ -512,19 +517,37 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         })),
       });
 
-      // Announce only the FIRST winner (first correct answer for participants)
+      // Announce FIRST winners for both PARTICIPANTS and AUDIENCE
       const correctParticipantAnswers = answers
         .filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT')
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       
+      const correctAudienceAnswers = answers
+        .filter(answer => answer.isCorrect && answer.user?.role === 'AUDIENCE')
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      
+      // Announce first participant winner
       if (correctParticipantAnswers.length > 0) {
-        const firstWinner = correctParticipantAnswers[0];
+        const firstParticipantWinner = correctParticipantAnswers[0];
         this.server.emit('winner_announced', {
-          userId: firstWinner.userId,
-          username: firstWinner.user?.username,
-          uniqueNumber: firstWinner.user?.uniqueNumber,
-          role: firstWinner.user?.role,
-          responseTime: firstWinner.responseTime,
+          userId: firstParticipantWinner.userId,
+          username: firstParticipantWinner.user?.username,
+          uniqueNumber: firstParticipantWinner.user?.uniqueNumber,
+          role: firstParticipantWinner.user?.role,
+          responseTime: firstParticipantWinner.responseTime,
+          questionId: data.questionId,
+        });
+      }
+      
+      // Announce first audience winner
+      if (correctAudienceAnswers.length > 0) {
+        const firstAudienceWinner = correctAudienceAnswers[0];
+        this.server.emit('winner_announced', {
+          userId: firstAudienceWinner.userId,
+          username: firstAudienceWinner.user?.username,
+          uniqueNumber: firstAudienceWinner.user?.uniqueNumber,
+          role: firstAudienceWinner.user?.role,
+          responseTime: firstAudienceWinner.responseTime,
           questionId: data.questionId,
         });
       }

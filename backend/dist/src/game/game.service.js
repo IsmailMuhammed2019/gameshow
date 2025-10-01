@@ -134,7 +134,7 @@ let GameService = class GameService {
         const isCorrect = selectedOption === question.correctAnswer;
         const calculatedResponseTime = responseTime || 0;
         let isWinner = false;
-        if (isCorrect && user.role === 'PARTICIPANT') {
+        if (isCorrect && (user.role === 'PARTICIPANT' || user.role === 'AUDIENCE')) {
             const existingCorrectAnswers = await this.prisma.answer.findMany({
                 where: {
                     questionId,
@@ -143,8 +143,8 @@ let GameService = class GameService {
                 },
                 include: { user: true },
             });
-            const participantCorrectAnswers = existingCorrectAnswers.filter(answer => answer.user.role === 'PARTICIPANT');
-            isWinner = participantCorrectAnswers.length === 0;
+            const roleCorrectAnswers = existingCorrectAnswers.filter(answer => answer.user.role === user.role);
+            isWinner = roleCorrectAnswers.length === 0;
         }
         await this.prisma.$transaction(async (tx) => {
             await tx.answer.create({
@@ -157,7 +157,7 @@ let GameService = class GameService {
                     responseTime: calculatedResponseTime,
                 },
             });
-            if (isWinner && user.role === 'PARTICIPANT') {
+            if (isCorrect && (user.role === 'PARTICIPANT' || user.role === 'AUDIENCE')) {
                 await tx.user.update({
                     where: { id: userId },
                     data: { score: { increment: 1 } },

@@ -147,6 +147,7 @@ export default function AudiencePage() {
     newSocket.on('user_list_updated', (data: any) => {
       console.log('User list updated:', data);
       console.log('Audience count:', data.audience?.length || 0);
+      console.log('Audience data with scores:', data.audience?.map((a: any) => ({ username: a.username, score: a.score, role: a.role })));
       // Update audience list
       setAudience(data.audience || []);
       setParticipants(data.participants || []);

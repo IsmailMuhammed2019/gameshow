@@ -304,6 +304,7 @@ export default function GameMasterPage() {
 
              newSocket.on('user_list_updated', (data: any) => {
                console.log('User list updated:', data);
+               console.log('Audience data with scores:', data.audience?.map((a: any) => ({ username: a.username, score: a.score, role: a.role })));
                setParticipants(data.participants || []);
                setAudience(data.audience || []);
              });
@@ -844,6 +845,50 @@ export default function GameMasterPage() {
                 <div className="text-4xl mb-2">🎯</div>
                 <p className="text-gray-500 font-medium">No winners yet</p>
                 <p className="text-sm text-gray-400">First participant to answer correctly wins!</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Winners - Audience Only (First to Answer) */}
+        <Card className="game-show-card">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl font-bold text-gray-800">
+              🏆 RECENT WINNERS (Audience)
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              First to answer correctly
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {winners.filter(w => w.role === 'AUDIENCE').length > 0 ? (
+              <div className="space-y-3">
+                {winners.filter(w => w.role === 'AUDIENCE').slice(-5).map((winner, index) => (
+                  <div key={index} className="player-item p-4 bg-gradient-to-r from-teal-50 to-blue-50 border-2 border-teal-300 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                          🏆
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800 text-lg">{winner.username}</p>
+                          <p className="text-sm text-teal-600 font-semibold">#{winner.uniqueNumber}</p>
+                        </div>
+                      </div>
+                      {winner.responseTime !== undefined && winner.responseTime > 0 && (
+                        <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                          ⏱️ {(winner.responseTime / 1000).toFixed(2)}s
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-2">👥</div>
+                <p className="text-gray-500 font-medium">No audience winners yet</p>
+                <p className="text-sm text-gray-400">First audience member to answer correctly wins!</p>
               </div>
             )}
           </CardContent>
