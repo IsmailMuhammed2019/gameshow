@@ -141,17 +141,40 @@ export default function AudiencePage() {
           selectedOption: userAnswer.selectedOption,
           submitted: true,
         });
+        
+        // Update user score if correct
+        if (userAnswer.isCorrect) {
+          const { setUser } = useAuthStore.getState();
+          setUser({
+            ...user,
+            score: Number(user.score) + 1,
+          });
+        }
       }
     });
 
     newSocket.on('user_list_updated', (data: any) => {
-      console.log('User list updated:', data);
+      console.log('========== AUDIENCE USER LIST UPDATE ==========');
+      console.log('Full data received:', JSON.stringify(data, null, 2));
       console.log('Audience count:', data.audience?.length || 0);
-      console.log('Audience data with scores:', data.audience?.map((a: any) => ({ username: a.username, score: a.score, role: a.role })));
+      console.log('Participants count:', data.participants?.length || 0);
+      console.log('Audience data with scores:', data.audience?.map((a: any) => ({ 
+        username: a.username, 
+        score: a.score, 
+        scoreType: typeof a.score,
+        role: a.role 
+      })));
+      console.log('Participants data with scores:', data.participants?.map((p: any) => ({ 
+        username: p.username, 
+        score: p.score, 
+        scoreType: typeof p.score,
+        role: p.role 
+      })));
       // Update audience list
       setAudience(data.audience || []);
       setParticipants(data.participants || []);
       console.log('Updated store - audience:', data.audience || []);
+      console.log('===============================================');
     });
 
     return () => {
@@ -228,7 +251,7 @@ export default function AudiencePage() {
                 👥 AUDIENCE
               </CardTitle>
               <CardDescription className="text-teal-100">
-                Watching & Participating
+                Competing for Points & Prizes
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -391,9 +414,9 @@ export default function AudiencePage() {
                               <p className="text-xs text-gray-500 mt-1">Keep participating!</p>
                             </div>
                           )}
-                          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-sm text-blue-700 font-medium">
-                              👀 As an audience member, you don't earn points but can still participate!
+                          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                            <p className="text-sm text-green-700 font-medium">
+                              🎉 Great job! You earned a point for that correct answer!
                             </p>
                           </div>
                         </>
@@ -422,8 +445,16 @@ export default function AudiencePage() {
         {/* Right Sidebar - Leaderboard */}
         <div className="lg:col-span-1">
           {(() => {
-            console.log('Rendering audience leaderboard - Audience:', audience.length);
-            console.log('Audience data:', audience);
+            console.log('========== AUDIENCE LEADERBOARD DATA ==========');
+            console.log('Audience count:', audience.length);
+            console.log('Full audience data:', JSON.stringify(audience, null, 2));
+            console.log('Audience scores:', audience.map(a => ({ 
+              username: a.username, 
+              score: a.score,
+              scoreType: typeof a.score,
+              role: a.role 
+            })));
+            console.log('===========================================');
             return null;
           })()}
           <Leaderboard 
