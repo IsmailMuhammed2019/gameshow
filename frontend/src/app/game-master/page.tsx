@@ -42,6 +42,9 @@ export default function GameMasterPage() {
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [selectedEpisode, setSelectedEpisode] = useState<string>('');
+  const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
+  const [showQuestionSelector, setShowQuestionSelector] = useState(false);
 
   const clearNotifications = () => {
     setAnswerNotifications([]);
@@ -56,6 +59,34 @@ export default function GameMasterPage() {
       console.error('Error fetching episodes:', error);
     }
   };
+
+  const fetchEpisodeQuestions = async (episodeId: string) => {
+    try {
+      const response = await api.get(`/episodes/${episodeId}/questions`);
+      setAvailableQuestions(response.data);
+      setShowQuestionSelector(true);
+    } catch (error) {
+      console.error('Error fetching episode questions:', error);
+      alert('Failed to load questions from this episode');
+    }
+  };
+
+  const sendSelectedQuestion = useCallback((questionId: string, targetRole: 'PARTICIPANT' | 'AUDIENCE') => {
+    const currentSocket = socketRef.current;
+    const currentGameSession = gameSessionRef.current;
+
+    if (currentSocket && currentGameSession) {
+      currentSocket.emit('send_specific_question', {
+        gameSessionId: currentGameSession.id,
+        questionId: questionId,
+        targetRole: targetRole,
+      });
+      setShowQuestionSelector(false);
+      setSelectedQuestionId('');
+    } else {
+      alert('Game session not active. Please start the game first.');
+    }
+  }, []);
   
   // Use refs to avoid dependency issues
   const socketRef = useRef<any>(null);
@@ -463,42 +494,32 @@ export default function GameMasterPage() {
               )}
             </div>
 
-            {/* Role Selection */}
-            <div className="space-y-3">
-              <label className="text-white font-medium">Target Role:</label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setTargetRole('PARTICIPANT')}
-                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
-                    targetRole === 'PARTICIPANT'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                  }`}
+            {/* Manual Question Selection */}
+            {selectedEpisode && (
+              <div className="space-y-3">
+                <label className="text-white font-medium">📋 Question Selection:</label>
+                <Button
+                  onClick={() => fetchEpisodeQuestions(selectedEpisode)}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold"
+                  disabled={!gameSession}
                 >
-                  👥 Participants
-                </button>
-                <button
-                  onClick={() => setTargetRole('AUDIENCE')}
-                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
-                    targetRole === 'AUDIENCE'
-                      ? 'bg-teal-500 text-white'
-                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                  }`}
-                >
-                  👀 Audience
-                </button>
-                <button
-                  onClick={() => setTargetRole('BOTH')}
-                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
-                    targetRole === 'BOTH'
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                  }`}
-                >
-                  🌟 Both
-                </button>
+                  📝 Browse & Select Questions
+                </Button>
+                <p className="text-xs text-gray-300 text-center">
+                  Click to view and select specific questions to send
+                </p>
               </div>
-            </div>
+            )}
+            
+            {!selectedEpisode && (
+              <div className="space-y-3">
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-300 text-sm text-center">
+                    ⚠️ Please select an episode to enable manual question selection
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Timer Display */}
             {timerActive && (
@@ -530,25 +551,6 @@ export default function GameMasterPage() {
               >
                 <Play className="w-6 h-6 mr-3" />
                 🚀 START GAME
-              </Button>
-              <Button
-                variant="teal-blue"
-                onClick={nextQuestion}
-                disabled={isLoadingQuestion}
-                className="w-full h-16 text-lg font-bold bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 shadow-lg"
-                title={`Debug: Connected=${isConnected}, GameSession=${!!gameSession}, Status=${gameSession?.status}, Loading=${isLoadingQuestion}, TargetRole=${targetRole}`}
-              >
-                {isLoadingQuestion ? (
-                  <>
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
-                    LOADING...
-                  </>
-                ) : (
-                  <>
-                    <Settings className="w-6 h-6 mr-3" />
-                    📝 NEXT QUESTION
-                  </>
-                )}
               </Button>
             </div>
             <Button
@@ -813,6 +815,98 @@ export default function GameMasterPage() {
             >
               Continue
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Question Selector Modal */}
+      <Dialog open={showQuestionSelector} onOpenChange={setShowQuestionSelector}>
+        <DialogContent className="bg-white max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>📋 Select Question to Send</DialogTitle>
+            <DialogDescription>
+              Choose a question and select who should receive it
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {availableQuestions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No questions available in this episode.</p>
+              </div>
+            ) : (
+              availableQuestions.map((question, index) => (
+                <Card key={question.id} className="p-4 hover:shadow-lg transition-shadow">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-bold text-gray-700">Q{index + 1}.</span>
+                          <h4 className="font-semibold flex-1">{question.question}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            question.questionType === 'YES_NO' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {question.questionType === 'YES_NO' ? 'Yes/No' : 'Multiple Choice'}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            question.targetRole === 'PARTICIPANT' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {question.targetRole === 'PARTICIPANT' ? '🎯 For Participants' : '👥 For Audience'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {question.options.map((option: string, idx: number) => (
+                            <div
+                              key={idx}
+                              className={`p-2 rounded text-sm ${
+                                idx === question.correctAnswer
+                                  ? 'bg-green-100 text-green-800 border border-green-300 font-medium'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {String.fromCharCode(65 + idx)}. {option}
+                              {idx === question.correctAnswer && ' ✓'}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          Difficulty: {question.difficulty} | Status: {question.isActive ? '✅ Active' : '❌ Inactive'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        onClick={() => sendSelectedQuestion(question.id, 'PARTICIPANT')}
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
+                        disabled={!question.isActive}
+                      >
+                        👥 Send to Participants
+                      </Button>
+                      <Button
+                        onClick={() => sendSelectedQuestion(question.id, 'AUDIENCE')}
+                        className="flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                        disabled={!question.isActive}
+                      >
+                        👀 Send to Audience
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          sendSelectedQuestion(question.id, 'PARTICIPANT');
+                          setTimeout(() => sendSelectedQuestion(question.id, 'AUDIENCE'), 100);
+                        }}
+                        className="flex-1 bg-purple-500 hover:bg-purple-600 text-white"
+                        disabled={!question.isActive}
+                      >
+                        🌟 Send to Both
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

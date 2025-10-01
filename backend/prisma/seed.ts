@@ -329,41 +329,156 @@ async function main() {
     });
   }
 
-  // Create sample episodes
-  const sampleEpisodes = [
-    {
+  // Create sample episodes with questions
+  console.log('📺 Creating episodes...');
+  
+  // Episode 1: General Knowledge with both participant and audience questions
+  const generalKnowledgeEpisode = await prisma.episode.create({
+    data: {
       title: "General Knowledge",
       description: "A collection of general knowledge questions covering various topics",
-      status: 'PUBLISHED' as const,
+      status: 'PUBLISHED',
     },
-    {
+  });
+
+  // Add participant questions to General Knowledge
+  await prisma.question.create({
+    data: {
+      question: "What is the capital of France?",
+      options: ["London", "Berlin", "Paris", "Madrid"],
+      correctAnswer: 2,
+      difficulty: 5,
+      targetRole: 'PARTICIPANT',
+      episodeId: generalKnowledgeEpisode.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.question.create({
+    data: {
+      question: "Which planet is known as the Red Planet?",
+      options: ["Venus", "Mars", "Jupiter", "Saturn"],
+      correctAnswer: 1,
+      difficulty: 3,
+      targetRole: 'PARTICIPANT',
+      episodeId: generalKnowledgeEpisode.id,
+      isActive: true,
+    },
+  });
+
+  // Add audience questions to General Knowledge
+  await prisma.question.create({
+    data: {
+      question: "What color is the sky?",
+      options: ["Red", "Blue", "Green", "Yellow"],
+      correctAnswer: 1,
+      difficulty: 1,
+      targetRole: 'AUDIENCE',
+      episodeId: generalKnowledgeEpisode.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.question.create({
+    data: {
+      question: "How many days are in a week?",
+      options: ["5", "6", "7", "8"],
+      correctAnswer: 2,
+      difficulty: 1,
+      targetRole: 'AUDIENCE',
+      episodeId: generalKnowledgeEpisode.id,
+      isActive: true,
+    },
+  });
+
+  // Episode 2: Science & Technology
+  const scienceTechEpisode = await prisma.episode.create({
+    data: {
       title: "Science & Technology",
       description: "Questions about science, technology, and innovation",
-      status: 'PUBLISHED' as const,
+      status: 'PUBLISHED',
     },
-    {
+  });
+
+  // Add participant questions to Science & Technology
+  await prisma.question.create({
+    data: {
+      question: "What does CPU stand for?",
+      options: ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Computer Processing Unit"],
+      correctAnswer: 0,
+      difficulty: 6,
+      targetRole: 'PARTICIPANT',
+      episodeId: scienceTechEpisode.id,
+      isActive: true,
+    },
+  });
+
+  // Add audience questions to Science & Technology
+  await prisma.question.create({
+    data: {
+      question: "Do computers use electricity?",
+      options: ["Yes", "No"],
+      correctAnswer: 0,
+      difficulty: 1,
+      targetRole: 'AUDIENCE',
+      questionType: 'YES_NO',
+      episodeId: scienceTechEpisode.id,
+      isActive: true,
+    },
+  });
+
+  // Episode 3: History & Geography
+  const historyGeoEpisode = await prisma.episode.create({
+    data: {
       title: "History & Geography",
       description: "Historical events and geographical facts",
-      status: 'DRAFT' as const,
+      status: 'DRAFT',
     },
-    {
+  });
+
+  // Episode 4: Sports & Entertainment  
+  const sportsEntertainmentEpisode = await prisma.episode.create({
+    data: {
       title: "Sports & Entertainment",
       description: "Questions about sports, movies, music, and entertainment",
-      status: 'PUBLISHED' as const,
+      status: 'PUBLISHED',
     },
-  ];
+  });
 
-  for (const episodeData of sampleEpisodes) {
-    await prisma.episode.create({
-      data: episodeData,
-    });
-  }
+  await prisma.question.create({
+    data: {
+      question: "How many players are on a soccer team?",
+      options: ["9", "10", "11", "12"],
+      correctAnswer: 2,
+      difficulty: 4,
+      targetRole: 'PARTICIPANT',
+      episodeId: sportsEntertainmentEpisode.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.question.create({
+    data: {
+      question: "Is basketball a sport?",
+      options: ["Yes", "No"],
+      correctAnswer: 0,
+      difficulty: 1,
+      targetRole: 'AUDIENCE',
+      questionType: 'YES_NO',
+      episodeId: sportsEntertainmentEpisode.id,
+      isActive: true,
+    },
+  });
+
+  const episodeCount = 4;
+  const episodeQuestionCount = 8;
 
   console.log('✅ Database seeded successfully!');
   console.log(`📝 Created ${sampleQuestions.length} participant questions`);
   console.log(`📝 Created ${audienceQuestions.length} audience questions`);
   console.log(`📝 Created ${yesNoQuestions.length} Yes/No questions`);
-  console.log(`📺 Created ${sampleEpisodes.length} episodes`);
+  console.log(`📺 Created ${episodeCount} episodes`);
+  console.log(`📺 Created ${episodeQuestionCount} episode-specific questions (with both participant & audience questions)`);
   console.log('🔑 Admin credentials:');
   console.log('   Username: admin');
   console.log('   Password: admin123');

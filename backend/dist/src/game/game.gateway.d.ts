@@ -97,6 +97,31 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
         error: any;
         results?: undefined;
     }>;
+    handleSendSpecificQuestion(client: Socket, data: {
+        gameSessionId: string;
+        questionId: string;
+        targetRole: 'PARTICIPANT' | 'AUDIENCE';
+    }): Promise<{
+        success: boolean;
+        question: {
+            id: string;
+            isActive: boolean;
+            createdAt: Date;
+            updatedAt: Date;
+            question: string;
+            options: string[];
+            correctAnswer: number;
+            difficulty: number;
+            targetRole: import(".prisma/client").$Enums.UserRole;
+            questionType: import(".prisma/client").$Enums.QuestionType;
+            episodeId: string | null;
+        };
+        error?: undefined;
+    } | {
+        success: boolean;
+        error: any;
+        question?: undefined;
+    }>;
     handleClearScores(client: Socket): Promise<{
         success: boolean;
         result: {

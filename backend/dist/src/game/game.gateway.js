@@ -300,6 +300,38 @@ let GameGateway = class GameGateway {
             return { success: false, error: error.message };
         }
     }
+    async handleSendSpecificQuestion(client, data) {
+        try {
+            console.log('Sending specific question:', data);
+            const question = await this.gameService.getQuestionById(data.questionId);
+            if (!question) {
+                client.emit('error', { message: 'Question not found' });
+                return { success: false, error: 'Question not found' };
+            }
+            await this.gameService.getGameSession(data.gameSessionId);
+            this.stopQuestionTimer();
+            if (data.targetRole === 'PARTICIPANT') {
+                this.server.emit('new_question', {
+                    participantQuestion: question,
+                    audienceQuestion: null,
+                });
+            }
+            else if (data.targetRole === 'AUDIENCE') {
+                this.server.emit('new_question', {
+                    participantQuestion: null,
+                    audienceQuestion: question,
+                });
+            }
+            console.log('Question sent to', data.targetRole);
+            this.startQuestionTimer();
+            return { success: true, question };
+        }
+        catch (error) {
+            console.error('Error sending specific question:', error);
+            client.emit('error', { message: error.message });
+            return { success: false, error: error.message };
+        }
+    }
     async handleClearScores(client) {
         try {
             let user = null;
@@ -385,6 +417,14 @@ __decorate([
     __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
     __metadata("design:returntype", Promise)
 ], GameGateway.prototype, "handleEndGame", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('send_specific_question'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:returntype", Promise)
+], GameGateway.prototype, "handleSendSpecificQuestion", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('clear_scores'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

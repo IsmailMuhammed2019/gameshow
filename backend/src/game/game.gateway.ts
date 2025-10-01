@@ -425,6 +425,53 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @SubscribeMessage('send_specific_question')
+  async handleSendSpecificQuestion(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { gameSessionId: string; questionId: string; targetRole: 'PARTICIPANT' | 'AUDIENCE' },
+  ) {
+    try {
+      console.log('Sending specific question:', data);
+      
+      // Get the question
+      const question = await this.gameService.getQuestionById(data.questionId);
+      if (!question) {
+        client.emit('error', { message: 'Question not found' });
+        return { success: false, error: 'Question not found' };
+      }
+
+      // Update game session with current question
+      await this.gameService.getGameSession(data.gameSessionId);
+
+      // Stop any existing timer
+      this.stopQuestionTimer();
+
+      // Send question based on target role
+      if (data.targetRole === 'PARTICIPANT') {
+        this.server.emit('new_question', {
+          participantQuestion: question,
+          audienceQuestion: null,
+        });
+      } else if (data.targetRole === 'AUDIENCE') {
+        this.server.emit('new_question', {
+          participantQuestion: null,
+          audienceQuestion: question,
+        });
+      }
+
+      console.log('Question sent to', data.targetRole);
+
+      // Start the timer for the question
+      this.startQuestionTimer();
+
+      return { success: true, question };
+    } catch (error) {
+      console.error('Error sending specific question:', error);
+      client.emit('error', { message: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
   @SubscribeMessage('clear_scores')
   async handleClearScores(@ConnectedSocket() client: Socket) {
     try {

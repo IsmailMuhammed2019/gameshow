@@ -218,15 +218,8 @@ export default function GeneralAdminPage() {
             <DialogTrigger asChild>
               <Button 
                 className="bg-gold-500 hover:bg-gold-600 text-white"
-                onClick={() => {
-                  // Set the target role based on active tab
-                  setNewQuestion(prev => ({
-                    ...prev,
-                    targetRole: activeTab === 'participant' ? 'PARTICIPANT' : 'AUDIENCE'
-                  }));
-                }}
               >
-                Add New {activeTab === 'participant' ? 'Participant' : 'Audience'} Question
+                ➕ Add New Question
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-white">
@@ -294,11 +287,19 @@ export default function GeneralAdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Target Role</label>
-                  <div className="w-full p-3 bg-gray-100 border rounded text-gray-700">
-                    {newQuestion.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
-                    <span className="text-sm text-gray-500 ml-2">(Auto-selected based on current tab)</span>
-                  </div>
+                  <label className="block text-sm font-medium mb-2">Target Role *</label>
+                  <select
+                    value={newQuestion.targetRole}
+                    onChange={(e) => setNewQuestion({ ...newQuestion, targetRole: e.target.value as 'PARTICIPANT' | 'AUDIENCE' })}
+                    className="w-full p-2 border rounded"
+                    required
+                  >
+                    <option value="PARTICIPANT">🎯 Participant (Harder Questions)</option>
+                    <option value="AUDIENCE">👥 Audience (Easier Questions)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select who should receive this question
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Episode (Optional)</label>
@@ -377,6 +378,9 @@ export default function GeneralAdminPage() {
               👥 Audience Questions ({audienceQuestions.length})
             </button>
           </div>
+          <p className="text-white/60 text-sm mt-2 text-center">
+            💡 Tabs are for viewing only. You can add questions with any role from the "Add New Question" button or episode cards.
+          </p>
         </div>
 
         {/* Episodes Section */}
@@ -466,10 +470,15 @@ export default function GeneralAdminPage() {
                       <Button
                         onClick={() => {
                           setSelectedEpisode(episode);
-                          setNewQuestion(prev => ({
-                            ...prev,
-                            episodeId: episode.id
-                          }));
+                          setNewQuestion({
+                            question: '',
+                            options: ['', '', '', ''],
+                            correctAnswer: 0,
+                            difficulty: 1,
+                            targetRole: 'PARTICIPANT', // Default but user can change
+                            questionType: 'MULTIPLE_CHOICE',
+                            episodeId: episode.id,
+                          });
                           setIsDialogOpen(true);
                         }}
                         variant="default"
