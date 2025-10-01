@@ -121,25 +121,6 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* Game Master Login Section */}
-        <div className="text-center mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 max-w-md mx-auto border border-white/20">
-            <div className="flex justify-center mb-4">
-              <Trophy className="w-12 h-12 text-dark-blue-500" />
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">Game Master</h3>
-            <p className="text-white/80 mb-4">
-              Host the game and control the questions!
-            </p>
-            <Button 
-              variant="dark-red" 
-              className="w-full"
-              onClick={() => router.push('/login?role=GAME_MASTER')}
-            >
-              Login as Game Master
-            </Button>
-          </div>
-        </div>
 
         {/* Login Section */}
         <div className="text-center">
