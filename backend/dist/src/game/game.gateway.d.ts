@@ -31,8 +31,8 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            episodeId: string | null;
             status: import(".prisma/client").$Enums.GameStatus;
+            episodeId: string | null;
             currentQuestionId: string | null;
             currentQuestionIndex: number;
             totalQuestions: number;
@@ -112,11 +112,11 @@ export declare class GameGateway implements OnGatewayConnection, OnGatewayDiscon
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            targetRole: import(".prisma/client").$Enums.UserRole;
             question: string;
             options: string[];
             correctAnswer: number;
             difficulty: number;
-            targetRole: import(".prisma/client").$Enums.UserRole;
             questionType: import(".prisma/client").$Enums.QuestionType;
             episodeId: string | null;
         };

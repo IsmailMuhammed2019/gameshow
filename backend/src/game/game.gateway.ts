@@ -167,7 +167,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
-  private startQuestionTimer(difficulty?: number) {
+  private startQuestionTimer(difficulty?: number, targetRole?: string) {
     // Set time limit based on difficulty if provided, otherwise use default
     if (difficulty) {
       this.questionTimeLimit = Math.round(this.getTimeLimitByDifficulty(difficulty));
@@ -175,25 +175,68 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     
     this.currentQuestionTimeLeft = this.questionTimeLimit;
     
-    this.server.emit('timer_started', {
-      timeLimit: this.questionTimeLimit,
-      timeLeft: this.currentQuestionTimeLeft,
-      difficulty: difficulty,
-    });
+    // Only emit timer to the specific role that should see it
+    if (targetRole === 'PARTICIPANT') {
+      this.server.to('role_PARTICIPANT').emit('timer_started', {
+        timeLimit: this.questionTimeLimit,
+        timeLeft: this.currentQuestionTimeLeft,
+        difficulty: difficulty,
+      });
+    } else if (targetRole === 'AUDIENCE') {
+      this.server.to('role_AUDIENCE').emit('timer_started', {
+        timeLimit: this.questionTimeLimit,
+        timeLeft: this.currentQuestionTimeLeft,
+        difficulty: difficulty,
+      });
+    } else {
+      // Fallback: emit to all (for backward compatibility)
+      this.server.emit('timer_started', {
+        timeLimit: this.questionTimeLimit,
+        timeLeft: this.currentQuestionTimeLeft,
+        difficulty: difficulty,
+      });
+    }
 
     this.questionTimer = setInterval(() => {
       this.currentQuestionTimeLeft--;
       
-      this.server.emit('timer_update', {
-        timeLeft: this.currentQuestionTimeLeft,
-        timeLimit: this.questionTimeLimit,
-      });
+      // Only emit timer updates to the specific role that should see it
+      if (targetRole === 'PARTICIPANT') {
+        this.server.to('role_PARTICIPANT').emit('timer_update', {
+          timeLeft: this.currentQuestionTimeLeft,
+          timeLimit: this.questionTimeLimit,
+        });
+      } else if (targetRole === 'AUDIENCE') {
+        this.server.to('role_AUDIENCE').emit('timer_update', {
+          timeLeft: this.currentQuestionTimeLeft,
+          timeLimit: this.questionTimeLimit,
+        });
+      } else {
+        // Fallback: emit to all (for backward compatibility)
+        this.server.emit('timer_update', {
+          timeLeft: this.currentQuestionTimeLeft,
+          timeLimit: this.questionTimeLimit,
+        });
+      }
 
       if (this.currentQuestionTimeLeft <= 0) {
         this.stopQuestionTimer();
-        this.server.emit('timer_expired', {
-          message: 'Time\'s up! The question has expired.',
-        });
+        
+        // Only emit timer expired to the specific role that should see it
+        if (targetRole === 'PARTICIPANT') {
+          this.server.to('role_PARTICIPANT').emit('timer_expired', {
+            message: 'Time\'s up! The question has expired.',
+          });
+        } else if (targetRole === 'AUDIENCE') {
+          this.server.to('role_AUDIENCE').emit('timer_expired', {
+            message: 'Time\'s up! The question has expired.',
+          });
+        } else {
+          // Fallback: emit to all (for backward compatibility)
+          this.server.emit('timer_expired', {
+            message: 'Time\'s up! The question has expired.',
+          });
+        }
       }
     }, 1000);
   }
@@ -272,7 +315,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         
         // Start the timer for the first question (use participant question difficulty if available)
         const timerDifficulty = participantQuestion?.difficulty || 5; // Default to medium difficulty
-        this.startQuestionTimer(timerDifficulty);
+        this.startQuestionTimer(timerDifficulty, data.targetRole);
       }
       
       return { success: true, gameSession };
@@ -331,7 +374,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       
       // Start the timer for the new question (use participant question difficulty if available)
       const timerDifficulty = participantQuestion?.difficulty || 5; // Default to medium difficulty
-      this.startQuestionTimer(timerDifficulty);
+      this.startQuestionTimer(timerDifficulty, 'PARTICIPANT'); // Next question is always for participants
       
       // Send acknowledgment back to the game master
       client.emit('next_question_response', { 
@@ -561,7 +604,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       console.log('Question sent to', data.targetRole);
 
       // Start the timer for the question with difficulty-based timing
-      this.startQuestionTimer(question.difficulty);
+      this.startQuestionTimer(question.difficulty, data.targetRole);
 
       return { success: true, question };
     } catch (error) {

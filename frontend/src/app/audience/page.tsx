@@ -206,9 +206,13 @@ export default function AudiencePage() {
           <span className="text-white text-sm">
             {isConnected ? 'Connected' : 'Disconnected'}
           </span>
-          <Button variant="outline" onClick={handleLogout} className="ml-4 text-teal-blue-600">
-            <LogOut className="w-4 h-4 mr-2 text-teal-blue-600" />
-            Logout
+          <Button 
+            variant="outline" 
+            onClick={handleLogout} 
+            className="ml-4 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white hover:border-white/40 transition-all duration-200"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            <span className="font-medium">Logout</span>
           </Button>
         </div> 
       </div>

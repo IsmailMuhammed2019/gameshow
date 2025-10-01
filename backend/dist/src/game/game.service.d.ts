@@ -36,11 +36,11 @@ export declare class GameService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        targetRole: import(".prisma/client").$Enums.UserRole;
         question: string;
         options: string[];
         correctAnswer: number;
         difficulty: number;
-        targetRole: import(".prisma/client").$Enums.UserRole;
         questionType: import(".prisma/client").$Enums.QuestionType;
         episodeId: string | null;
     }>;
@@ -49,11 +49,11 @@ export declare class GameService {
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        targetRole: import(".prisma/client").$Enums.UserRole;
         question: string;
         options: string[];
         correctAnswer: number;
         difficulty: number;
-        targetRole: import(".prisma/client").$Enums.UserRole;
         questionType: import(".prisma/client").$Enums.QuestionType;
         episodeId: string | null;
     }>;
