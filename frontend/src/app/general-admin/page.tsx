@@ -188,14 +188,51 @@ export default function GeneralAdminPage() {
   };
 
   const handleDeleteEpisode = async (episodeId: string) => {
-    if (confirm('Are you sure you want to delete this episode? This action cannot be undone.')) {
+    // Validate episodeId before making the request
+    if (!episodeId || episodeId.trim() === '') {
+      alert('Error: Invalid episode ID');
+      console.error('Attempted to delete episode with invalid ID:', episodeId);
+      return;
+    }
+
+    const confirmMessage = 'Are you sure you want to delete this episode?\n\n' +
+      'Note: Questions linked to this episode will be unlinked but NOT deleted.\n' +
+      'This action cannot be undone.';
+
+    if (confirm(confirmMessage)) {
+      console.log(`[DELETE] Attempting to delete episode with ID: ${episodeId}`);
+
       try {
-        await api.delete(`/episodes/${episodeId}`);
-        fetchQuestions();
-        alert('Episode deleted successfully');
-      } catch (error) {
-        console.error('Error deleting episode:', error);
-        alert('Failed to delete episode');
+        const response = await api.delete(`/episodes/${episodeId}`);
+        console.log(`[DELETE] Successfully deleted episode:`, response.data);
+        alert('Episode deleted successfully. Questions linked to this episode have been unlinked.');
+        // Refresh data after successful deletion
+        await fetchQuestions();
+      } catch (error: any) {
+        console.error('[DELETE] Error deleting episode:', error);
+
+        let errorMessage = 'Failed to delete episode';
+
+        if (error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+
+          if (status === 404) {
+            errorMessage = data?.message || 'Episode not found';
+          } else if (status === 400) {
+            errorMessage = data?.message || 'Invalid request';
+          } else if (status === 500) {
+            errorMessage = data?.message || 'Server error while deleting episode';
+          } else {
+            errorMessage = data?.message || `Error: ${status}`;
+          }
+        } else if (error.request) {
+          errorMessage = 'Cannot connect to server. Please check if the backend is running.';
+        } else {
+          errorMessage = error.message || 'An unexpected error occurred';
+        }
+
+        alert(errorMessage);
       }
     }
   };
@@ -222,13 +259,46 @@ export default function GeneralAdminPage() {
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
+    // Validate questionId before making the request
+    if (!questionId || questionId.trim() === '') {
+      alert('Error: Invalid question ID');
+      console.error('Attempted to delete question with invalid ID:', questionId);
+      return;
+    }
+
+    console.log(`[DELETE] Attempting to delete question with ID: ${questionId}`);
+    
     try {
-      await api.delete(`/game/questions/${questionId}`);
-      fetchQuestions();
+      const response = await api.delete(`/game/questions/${questionId}`);
+      console.log(`[DELETE] Successfully deleted question:`, response.data);
       alert('Question deleted successfully');
-    } catch (error) {
-      console.error('Error deleting question:', error);
-      alert('Failed to delete question');
+      // Refresh questions after successful deletion
+      await fetchQuestions();
+    } catch (error: any) {
+      console.error('[DELETE] Error deleting question:', error);
+      
+      let errorMessage = 'Failed to delete question';
+      
+      if (error.response) {
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 404) {
+          errorMessage = data?.message || 'Question not found';
+        } else if (status === 400) {
+          errorMessage = data?.message || 'Invalid request';
+        } else if (status === 500) {
+          errorMessage = data?.message || 'Server error while deleting question';
+        } else {
+          errorMessage = data?.message || `Error: ${status}`;
+        }
+      } else if (error.request) {
+        errorMessage = 'Cannot connect to server. Please check if the backend is running.';
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred';
+      }
+      
+      alert(errorMessage);
     }
   };
 

@@ -81,6 +81,8 @@ export declare class GameService {
             role: import(".prisma/client").$Enums.UserRole;
             isActive: boolean;
             score: bigint;
+            resetPasswordToken: string | null;
+            resetPasswordExpires: Date | null;
             createdAt: Date;
             updatedAt: Date;
         };

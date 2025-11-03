@@ -11,9 +11,11 @@ export declare class AuthController {
         id: string;
         username: string;
         email: string;
-        role: import(".prisma/client").$Enums.UserRole;
         uniqueNumber: string;
+        role: import(".prisma/client").$Enums.UserRole;
         isActive: boolean;
+        resetPasswordToken: string | null;
+        resetPasswordExpires: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;

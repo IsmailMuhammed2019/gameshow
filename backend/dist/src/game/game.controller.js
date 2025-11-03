@@ -48,7 +48,19 @@ let GameController = class GameController {
         if (req.user.role !== 'GENERAL_ADMIN') {
             throw new Error('Unauthorized: Only general admin can delete questions');
         }
-        return this.gameService.deleteQuestion(id);
+        if (!id || id.trim() === '') {
+            throw new Error('Question ID parameter is required');
+        }
+        console.log(`[DELETE] Attempting to delete question with ID: ${id}`);
+        try {
+            const result = await this.gameService.deleteQuestion(id);
+            console.log(`[DELETE] Successfully deleted question with ID: ${id}`);
+            return result;
+        }
+        catch (error) {
+            console.error(`[DELETE] Error deleting question ${id}:`, error);
+            throw error;
+        }
     }
     startGame(req, body = {}) {
         return this.gameService.startGame(req.user.userId, body.episodeId);

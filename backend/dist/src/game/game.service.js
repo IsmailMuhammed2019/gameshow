@@ -278,9 +278,41 @@ let GameService = class GameService {
         });
     }
     async deleteQuestion(questionId) {
-        return this.prisma.question.delete({
+        if (!questionId || questionId.trim() === '') {
+            throw new Error('Question ID is required');
+        }
+        const question = await this.prisma.question.findUnique({
             where: { id: questionId },
         });
+        if (!question) {
+            throw new Error(`Question with ID ${questionId} not found`);
+        }
+        const answerCount = await this.prisma.answer.count({
+            where: { questionId: questionId },
+        });
+        if (answerCount > 0) {
+            throw new Error(`Cannot delete question: it has ${answerCount} associated answer(s). Please remove answers first or contact support.`);
+        }
+        const activeSessionCount = await this.prisma.gameSession.count({
+            where: { currentQuestionId: questionId },
+        });
+        if (activeSessionCount > 0) {
+            throw new Error(`Cannot delete question: it is currently being used in ${activeSessionCount} active game session(s).`);
+        }
+        const deletedQuestion = await this.prisma.$transaction(async (tx) => {
+            const questionToDelete = await tx.question.findUnique({
+                where: { id: questionId },
+            });
+            if (!questionToDelete) {
+                throw new Error(`Question with ID ${questionId} no longer exists`);
+            }
+            const deleted = await tx.question.delete({
+                where: { id: questionId },
+            });
+            console.log(`[DELETE] Deleted question: ${deleted.id} - "${deleted.question.substring(0, 50)}..."`);
+            return deleted;
+        });
+        return deletedQuestion;
     }
     async getQuestionById(questionId) {
         return this.prisma.question.findUnique({

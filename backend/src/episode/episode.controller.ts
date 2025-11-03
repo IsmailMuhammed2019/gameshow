@@ -59,7 +59,22 @@ export class EpisodeController {
     if (req.user.role !== 'GENERAL_ADMIN') {
       throw new Error('Unauthorized: Only general admin can delete episodes');
     }
-    return this.episodeService.remove(id);
+
+    // Validate ID parameter
+    if (!id || id.trim() === '') {
+      throw new Error('Episode ID parameter is required');
+    }
+
+    console.log(`[DELETE] Attempting to delete episode with ID: ${id}`);
+
+    try {
+      const result = await this.episodeService.remove(id);
+      console.log(`[DELETE] Successfully deleted episode with ID: ${id}`);
+      return result;
+    } catch (error) {
+      console.error(`[DELETE] Error deleting episode ${id}:`, error);
+      throw error;
+    }
   }
 
   @Get(':id/questions')

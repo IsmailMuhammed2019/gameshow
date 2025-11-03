@@ -66,9 +66,51 @@ export class EpisodeService {
   }
 
   async remove(id: string) {
-    return this.prisma.episode.update({
+    // Validate that the episode ID is provided
+    if (!id || id.trim() === '') {
+      throw new Error('Episode ID is required');
+    }
+
+    // First check if the episode exists
+    const episode = await this.prisma.episode.findUnique({
       where: { id },
-      data: { isActive: false }
+      include: {
+        questions: true,
+        gameSessions: true,
+      },
+    });
+
+    if (!episode) {
+      throw new Error(`Episode with ID ${id} not found`);
+    }
+
+    // Check if episode has associated game sessions
+    const sessionCount = episode.gameSessions.length;
+    if (sessionCount > 0) {
+      throw new Error(
+        `Cannot delete episode: it has ${sessionCount} associated game session(s). Please end or delete game sessions first.`
+      );
+    }
+
+    // Check if episode has questions (we'll unlink them, not delete them)
+    const questionCount = episode.questions.length;
+
+    // Use a transaction to:
+    // 1. Unlink all questions from this episode (set episodeId to null)
+    // 2. Delete the episode
+    return this.prisma.$transaction(async (tx) => {
+      // Unlink all questions from this episode
+      if (questionCount > 0) {
+        await tx.question.updateMany({
+          where: { episodeId: id },
+          data: { episodeId: null },
+        });
+      }
+
+      // Delete the episode
+      return tx.episode.delete({
+        where: { id },
+      });
     });
   }
 

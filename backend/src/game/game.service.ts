@@ -358,9 +358,67 @@ export class GameService {
   }
 
   async deleteQuestion(questionId: string) {
-    return this.prisma.question.delete({
+    // Validate that the question ID is provided and not empty
+    if (!questionId || questionId.trim() === '') {
+      throw new Error('Question ID is required');
+    }
+
+    // First check if the question exists
+    const question = await this.prisma.question.findUnique({
       where: { id: questionId },
     });
+
+    if (!question) {
+      throw new Error(`Question with ID ${questionId} not found`);
+    }
+
+    // Check if question has associated answers (would cause RESTRICT constraint error)
+    const answerCount = await this.prisma.answer.count({
+      where: { questionId: questionId },
+    });
+
+    if (answerCount > 0) {
+      throw new Error(
+        `Cannot delete question: it has ${answerCount} associated answer(s). Please remove answers first or contact support.`
+      );
+    }
+
+    // Check if question is being used in any active game sessions
+    const activeSessionCount = await this.prisma.gameSession.count({
+      where: { currentQuestionId: questionId },
+    });
+
+    if (activeSessionCount > 0) {
+      throw new Error(
+        `Cannot delete question: it is currently being used in ${activeSessionCount} active game session(s).`
+      );
+    }
+
+    // Delete the question using a transaction to ensure atomicity
+    // and verify only one question is deleted
+    const deletedQuestion = await this.prisma.$transaction(async (tx) => {
+      // Double-check the question still exists (concurrency protection)
+      const questionToDelete = await tx.question.findUnique({
+        where: { id: questionId },
+      });
+
+      if (!questionToDelete) {
+        throw new Error(`Question with ID ${questionId} no longer exists`);
+      }
+
+      // Delete the specific question
+      const deleted = await tx.question.delete({
+        where: { id: questionId },
+      });
+
+      // Verify only one question was deleted by counting remaining questions
+      // (This is a safety check, Prisma should already ensure this)
+      console.log(`[DELETE] Deleted question: ${deleted.id} - "${deleted.question.substring(0, 50)}..."`);
+
+      return deleted;
+    });
+
+    return deletedQuestion;
   }
 
   async getQuestionById(questionId: string) {

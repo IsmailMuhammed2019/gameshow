@@ -165,6 +165,8 @@ export declare class GameController {
             role: import(".prisma/client").$Enums.UserRole;
             isActive: boolean;
             score: bigint;
+            resetPasswordToken: string | null;
+            resetPasswordExpires: Date | null;
             createdAt: Date;
             updatedAt: Date;
         }, "score"> & {
@@ -191,6 +193,8 @@ export declare class GameController {
             role: import(".prisma/client").$Enums.UserRole;
             isActive: boolean;
             score: bigint;
+            resetPasswordToken: string | null;
+            resetPasswordExpires: Date | null;
             createdAt: Date;
             updatedAt: Date;
         }, "score"> & {
