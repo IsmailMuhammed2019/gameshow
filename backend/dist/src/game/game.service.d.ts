@@ -45,6 +45,19 @@ export declare class GameService {
         questionType: import(".prisma/client").$Enums.QuestionType;
         episodeId: string | null;
     }>;
+    deleteQuestion(questionId: string): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        targetRole: import(".prisma/client").$Enums.UserRole;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        difficulty: number;
+        questionType: import(".prisma/client").$Enums.QuestionType;
+        episodeId: string | null;
+    }>;
     getQuestionById(questionId: string): Promise<{
         id: string;
         isActive: boolean;

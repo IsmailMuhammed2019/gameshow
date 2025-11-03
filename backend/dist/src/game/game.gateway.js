@@ -563,12 +563,20 @@ __decorate([
 exports.GameGateway = GameGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         cors: {
-            origin: [
-                'http://localhost:3000',
-                'https://localhost:3000',
-                'http://94.237.53.19:3000',
-                'https://94.237.53.19:3000'
-            ],
+            origin: (origin, callback) => {
+                const allowedOrigins = process.env.ALLOWED_ORIGINS
+                    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+                    : ['http://localhost:3000'];
+                if (!origin)
+                    return callback(null, true);
+                if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+                    callback(null, true);
+                }
+                else {
+                    console.warn(`⚠️  WebSocket: Blocked connection from origin: ${origin}`);
+                    callback(null, false);
+                }
+            },
             credentials: true,
         },
     }),

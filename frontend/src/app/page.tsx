@@ -85,7 +85,7 @@ export default function HomePage() {
         {/* Role Selection Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-8 max-w-2xl mx-auto">
           <Card className="question-card hover:scale-105 transition-transform cursor-pointer"
-                onClick={() => router.push('/register?role=participant')}>
+                onClick={() => router.push('/register?role=PARTICIPANT')}>
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
                 <Gamepad2 className="w-12 h-12 text-peach-500" />
@@ -103,7 +103,7 @@ export default function HomePage() {
           </Card>
 
           <Card className="question-card hover:scale-105 transition-transform cursor-pointer"
-                onClick={() => router.push('/register?role=audience')}>
+                onClick={() => router.push('/register?role=AUDIENCE')}>
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
                 <Users className="w-12 h-12 text-teal-500" />

@@ -1,0 +1,93 @@
+/* Safari-specific fixes */
+
+/* Fix Safari viewport issues */
+@supports (-webkit-touch-callout: none) {
+  .game-container {
+    -webkit-overflow-scrolling: touch;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}
+
+/* Fix Safari WebSocket connection issues */
+.safari-websocket-fix {
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Fix Safari input zoom issues */
+@media screen and (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Fix Safari flexbox issues */
+.safari-flex-fix {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+}
+
+/* Fix Safari button issues */
+button {
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Fix Safari scroll issues */
+.safari-scroll-fix {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+}
+
+/* Fix Safari animation issues */
+@keyframes safari-safe-spin {
+  from {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  to {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+
+.safari-spin {
+  animation: safari-safe-spin 1s linear infinite;
+  -webkit-animation: safari-safe-spin 1s linear infinite;
+}
+
+/* Fix Safari WebSocket status indicator */
+.connection-status {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Fix Safari modal issues */
+.safari-modal-fix {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Fix Safari touch events */
+.safari-touch-fix {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

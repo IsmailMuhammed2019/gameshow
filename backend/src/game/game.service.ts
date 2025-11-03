@@ -357,6 +357,12 @@ export class GameService {
     });
   }
 
+  async deleteQuestion(questionId: string) {
+    return this.prisma.question.delete({
+      where: { id: questionId },
+    });
+  }
+
   async getQuestionById(questionId: string) {
     return this.prisma.question.findUnique({
       where: { id: questionId },

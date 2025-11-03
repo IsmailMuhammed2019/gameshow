@@ -216,13 +216,18 @@ export default function GameMasterPage() {
       console.log('Attempting to connect to WebSocket...');
       
       // Initialize socket connection
-      const newSocket = io('http://94.237.53.19:3001', {
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+      const newSocket = io(wsUrl, {
         transports: ['polling', 'websocket'],
-        timeout: 10000,
+        timeout: 20000,
         forceNew: true,
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
+        reconnectionDelay: 3000,
+        reconnectionDelayMax: 15000,
+        autoConnect: true,
+        upgrade: true,
+        rememberUpgrade: false,
       });
     
       setSocket(newSocket);

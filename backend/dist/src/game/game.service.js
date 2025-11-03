@@ -277,6 +277,11 @@ let GameService = class GameService {
             data: updateData,
         });
     }
+    async deleteQuestion(questionId) {
+        return this.prisma.question.delete({
+            where: { id: questionId },
+        });
+    }
     async getQuestionById(questionId) {
         return this.prisma.question.findUnique({
             where: { id: questionId },

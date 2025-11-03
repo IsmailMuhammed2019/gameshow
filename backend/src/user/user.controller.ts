@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -35,5 +35,15 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
+  }
+
+  @Patch(':id/reset-password')
+  @UseGuards(JwtAuthGuard)
+  resetPassword(@Param('id') id: string, @Body() body: { newPassword: string }, @Request() req) {
+    // Only general admin can reset passwords
+    if (req.user.role !== 'GENERAL_ADMIN') {
+      throw new Error('Unauthorized: Only general admin can reset passwords');
+    }
+    return this.userService.resetPassword(id, body.newPassword);
   }
 }

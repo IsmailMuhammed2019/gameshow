@@ -12,6 +12,8 @@ import io from 'socket.io-client';
 import Celebration from '@/components/Celebration';
 import SoundEffects from '@/components/SoundEffects';
 import Leaderboard from '@/components/Leaderboard';
+import ConnectionStatus from '@/components/ConnectionStatus';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export default function ParticipantPage() {
   const router = useRouter();
@@ -34,7 +36,6 @@ export default function ParticipantPage() {
   } = useGameStore();
   
   const [socket, setSocket] = useState<any>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   // Removed screen overlay functionality
@@ -44,6 +45,10 @@ export default function ParticipantPage() {
   const [timeLimit, setTimeLimit] = useState<number>(10);
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [currentDifficulty, setCurrentDifficulty] = useState<number>(0);
+  const networkStatus = useNetworkStatus();
+
+  const [isConnected, setIsConnected] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== 'PARTICIPANT') {
@@ -51,19 +56,26 @@ export default function ParticipantPage() {
       return;
     }
 
-    // Initialize socket connection
-    const newSocket = io('http://94.237.53.19:3001', {
+    // Initialize socket connection with better error handling
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    const newSocket = io(wsUrl, {
       transports: ['polling', 'websocket'],
-      timeout: 10000,
+      timeout: 30000,
       forceNew: true,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 3,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 20000,
+      autoConnect: true,
+      upgrade: true,
+      rememberUpgrade: false,
     });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
+      console.log('WebSocket connected');
       setIsConnected(true);
+      setIsReconnecting(false);
       newSocket.emit('join_game', {
         userId: user.id,
         role: user.role,
@@ -71,7 +83,24 @@ export default function ParticipantPage() {
     });
 
     newSocket.on('disconnect', () => {
+      console.log('WebSocket disconnected');
       setIsConnected(false);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      setIsConnected(false);
+      setIsReconnecting(true);
+    });
+
+    newSocket.on('reconnect', () => {
+      console.log('WebSocket reconnected');
+      setIsReconnecting(false);
+    });
+
+    newSocket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`WebSocket reconnection attempt ${attemptNumber}`);
+      setIsReconnecting(true);
     });
 
     newSocket.on('game_started', (session: any) => {
@@ -186,7 +215,7 @@ export default function ParticipantPage() {
     });
 
     return () => {
-      newSocket.close();
+      newSocket.disconnect();
     };
   }, [user?.id, user?.role, setUser]);
 
@@ -228,8 +257,20 @@ export default function ParticipantPage() {
     return null;
   }
 
+  const handleRetryConnection = () => {
+    if (socket) {
+      socket.disconnect();
+      socket.connect();
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 participant-screen">
+      <ConnectionStatus 
+        isConnected={isConnected}
+        isReconnecting={isReconnecting}
+        onRetry={handleRetryConnection}
+      />
       {/* TV Show Header */}
       <div className="game-show-header p-6 mb-8 rounded-b-3xl">
         <div className="flex justify-between items-center">

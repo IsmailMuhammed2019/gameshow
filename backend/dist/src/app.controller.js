@@ -20,7 +20,46 @@ let AppController = class AppController {
         return this.appService.getHello();
     }
     getHealth() {
-        return { status: 'ok', timestamp: new Date().toISOString() };
+        return {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            service: 'millionaire-game-backend',
+            version: process.env.APP_VERSION || '1.0.0',
+            environment: process.env.NODE_ENV || 'development',
+            uptime: process.uptime(),
+        };
+    }
+    async getReadiness() {
+        try {
+            const prisma = new (await Promise.resolve().then(() => require('@prisma/client'))).PrismaClient();
+            await prisma.$queryRaw `SELECT 1`;
+            await prisma.$disconnect();
+            return {
+                status: 'ready',
+                timestamp: new Date().toISOString(),
+                checks: {
+                    database: 'ok',
+                    api: 'ok',
+                },
+            };
+        }
+        catch (error) {
+            return {
+                status: 'not ready',
+                timestamp: new Date().toISOString(),
+                checks: {
+                    database: 'error',
+                    api: 'ok',
+                },
+                error: error.message,
+            };
+        }
+    }
+    getLiveness() {
+        return {
+            status: 'alive',
+            timestamp: new Date().toISOString(),
+        };
     }
 };
 exports.AppController = AppController;
@@ -36,6 +75,18 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AppController.prototype, "getHealth", null);
+__decorate([
+    (0, common_1.Get)('health/ready'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AppController.prototype, "getReadiness", null);
+__decorate([
+    (0, common_1.Get)('health/live'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AppController.prototype, "getLiveness", null);
 exports.AppController = AppController = __decorate([
     (0, common_1.Controller)(),
     __metadata("design:paramtypes", [app_service_1.AppService])

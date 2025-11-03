@@ -28,12 +28,24 @@ interface Episode {
   description?: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   targetRole: 'PARTICIPANT' | 'AUDIENCE';
+  isForBothRoles: boolean;
   isActive: boolean;
   createdAt: string;
   questions: Question[];
   _count: {
     questions: number;
   };
+}
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: 'PARTICIPANT' | 'AUDIENCE' | 'GAME_MASTER' | 'GENERAL_ADMIN';
+  uniqueNumber: string;
+  isActive: boolean;
+  score: number;
+  createdAt: string;
 }
 
 export default function GeneralAdminPage() {
@@ -43,8 +55,9 @@ export default function GeneralAdminPage() {
   const [participantQuestions, setParticipantQuestions] = useState<Question[]>([]);
   const [audienceQuestions, setAudienceQuestions] = useState<Question[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'participant-episodes' | 'audience-episodes'>('participant-episodes');
+  const [activeTab, setActiveTab] = useState<'participant-episodes' | 'audience-episodes' | 'question-bank' | 'user-management'>('participant-episodes');
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
   const [newQuestion, setNewQuestion] = useState({
     question: '',
@@ -60,11 +73,17 @@ export default function GeneralAdminPage() {
     description: '',
     status: 'DRAFT' as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
     targetRole: 'PARTICIPANT' as 'PARTICIPANT' | 'AUDIENCE',
+    isForBothRoles: false,
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEpisodeDialogOpen, setIsEpisodeDialogOpen] = useState(false);
   const [isViewQuestionsOpen, setIsViewQuestionsOpen] = useState(false);
   const [episodeQuestions, setEpisodeQuestions] = useState<Question[]>([]);
+  const [isLinkQuestionOpen, setIsLinkQuestionOpen] = useState(false);
+  const [selectedQuestionToLink, setSelectedQuestionToLink] = useState<Question | null>(null);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [selectedUserToReset, setSelectedUserToReset] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
     // Initialize the store on first load
@@ -82,21 +101,26 @@ export default function GeneralAdminPage() {
 
   const fetchQuestions = async () => {
     try {
-      const [participantResponse, audienceResponse, episodesResponse] = await Promise.all([
+      console.log('Fetching questions, episodes, and users...');
+      const [participantResponse, audienceResponse, episodesResponse, usersResponse] = await Promise.all([
         api.get('/game/questions/participant'),
         api.get('/game/questions/audience'),
-        api.get('/episodes')
+        api.get('/episodes'),
+        api.get('/users')
       ]);
       
+      console.log('Episodes fetched:', episodesResponse.data.length);
+      console.log('Users fetched:', usersResponse.data.length);
       setParticipantQuestions(participantResponse.data);
       setAudienceQuestions(audienceResponse.data);
       setEpisodes(episodesResponse.data);
+      setUsers(usersResponse.data);
       
       // Also fetch all questions for backward compatibility
       const allResponse = await api.get('/game/questions');
       setQuestions(allResponse.data);
     } catch (error) {
-      console.error('Error fetching questions:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -107,7 +131,7 @@ export default function GeneralAdminPage() {
       // Clean up the question data before sending
       const questionData = {
         ...newQuestion,
-        episodeId: newQuestion.episodeId || undefined, // Convert empty string to undefined
+        episodeId: activeTab === 'question-bank' ? undefined : (newQuestion.episodeId || undefined), // Only link to episode if not in question bank
       };
       
       await api.post('/game/questions', questionData);
@@ -118,7 +142,7 @@ export default function GeneralAdminPage() {
         difficulty: 1,
         targetRole: 'PARTICIPANT',
         questionType: 'MULTIPLE_CHOICE',
-        episodeId: selectedEpisode?.id || '',
+        episodeId: activeTab === 'question-bank' ? '' : (selectedEpisode?.id || ''),
       });
       setIsDialogOpen(false);
       fetchQuestions();
@@ -140,6 +164,7 @@ export default function GeneralAdminPage() {
         description: '',
         status: 'DRAFT',
         targetRole: 'PARTICIPANT',
+        isForBothRoles: false,
       });
       setIsEpisodeDialogOpen(false);
       fetchQuestions(); // This refreshes episodes too
@@ -151,19 +176,27 @@ export default function GeneralAdminPage() {
 
   const handleUpdateEpisodeStatus = async (episodeId: string, status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') => {
     try {
+      console.log(`Updating episode ${episodeId} to status: ${status}`);
       await api.patch(`/episodes/${episodeId}`, { status });
-      fetchQuestions();
+      console.log('Episode updated successfully, refreshing data...');
+      await fetchQuestions();
+      alert(`Episode ${status.toLowerCase()} successfully`);
     } catch (error) {
       console.error('Error updating episode:', error);
+      alert('Failed to update episode status');
     }
   };
 
   const handleDeleteEpisode = async (episodeId: string) => {
-    try {
-      await api.delete(`/episodes/${episodeId}`);
-      fetchQuestions();
-    } catch (error) {
-      console.error('Error deleting episode:', error);
+    if (confirm('Are you sure you want to delete this episode? This action cannot be undone.')) {
+      try {
+        await api.delete(`/episodes/${episodeId}`);
+        fetchQuestions();
+        alert('Episode deleted successfully');
+      } catch (error) {
+        console.error('Error deleting episode:', error);
+        alert('Failed to delete episode');
+      }
     }
   };
 
@@ -184,6 +217,43 @@ export default function GeneralAdminPage() {
       fetchQuestions();
     } catch (error) {
       console.error('Error updating question:', error);
+      alert('Failed to update question status');
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    try {
+      await api.delete(`/game/questions/${questionId}`);
+      fetchQuestions();
+      alert('Question deleted successfully');
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      alert('Failed to delete question');
+    }
+  };
+
+  const handleLinkQuestionToEpisode = async (questionId: string, episodeId: string) => {
+    try {
+      await api.patch(`/game/questions/${questionId}`, { episodeId });
+      fetchQuestions();
+      alert('Question linked to episode successfully');
+      setIsLinkQuestionOpen(false);
+    } catch (error) {
+      console.error('Error linking question:', error);
+      alert('Failed to link question to episode');
+    }
+  };
+
+  const handleResetPassword = async (userId: string, newPassword: string) => {
+    try {
+      await api.patch(`/users/${userId}/reset-password`, { newPassword });
+      alert('Password reset successfully');
+      setIsResetPasswordOpen(false);
+      setNewPassword('');
+      setSelectedUserToReset(null);
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert('Failed to reset password');
     }
   };
 
@@ -223,7 +293,7 @@ export default function GeneralAdminPage() {
 
         {/* Question Creation Dialog (Opened from Episode Cards) */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="bg-white">
+            <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Question</DialogTitle>
               </DialogHeader>
@@ -394,6 +464,26 @@ export default function GeneralAdminPage() {
             >
               👥 Audience Episodes ({episodes.filter(e => e.targetRole === 'AUDIENCE').length})
             </button>
+            <button
+              onClick={() => setActiveTab('question-bank')}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
+                activeTab === 'question-bank'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              📚 Question Bank ({questions.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('user-management')}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
+                activeTab === 'user-management'
+                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              👥 User Management ({users.length})
+            </button>
           </div>
         </div>
 
@@ -430,9 +520,28 @@ export default function GeneralAdminPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Target Role</label>
-                      <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded">
-                        <strong className="text-blue-800">🎯 Participant</strong>
-                        <p className="text-xs text-blue-600 mt-1">All questions in this episode will be for participants</p>
+                      <div className="space-y-3">
+                        <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded">
+                          <strong className="text-blue-800">🎯 Participant</strong>
+                          <p className="text-xs text-blue-600 mt-1">All questions in this episode will be for participants</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="isForBothRoles"
+                            checked={newEpisode.isForBothRoles}
+                            onChange={(e) => setNewEpisode({ ...newEpisode, isForBothRoles: e.target.checked })}
+                            className="rounded"
+                          />
+                          <label htmlFor="isForBothRoles" className="text-sm font-medium text-gray-700">
+                            Also make this episode available for audience members
+                          </label>
+                        </div>
+                        {newEpisode.isForBothRoles && (
+                          <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                            ✅ This episode will be available for both participants and audience
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -480,6 +589,7 @@ export default function GeneralAdminPage() {
                         description: '',
                         status: 'DRAFT',
                         targetRole: 'PARTICIPANT',
+                        isForBothRoles: false,
                       });
                       setIsEpisodeDialogOpen(true);
                     }}
@@ -505,6 +615,11 @@ export default function GeneralAdminPage() {
                           }`}>
                             {episode.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
                           </span>
+                          {episode.isForBothRoles && (
+                            <span className="px-3 py-2 rounded-full text-sm font-bold shadow-md bg-gradient-to-r from-green-500 to-green-600 text-white">
+                              🔄 Both Roles
+                            </span>
+                          )}
                           <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
                             episode.status === 'PUBLISHED' 
                               ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
@@ -610,9 +725,28 @@ export default function GeneralAdminPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Target Role</label>
-                      <div className="w-full p-3 bg-teal-50 border border-teal-200 rounded">
-                        <strong className="text-teal-800">👥 Audience</strong>
-                        <p className="text-xs text-teal-600 mt-1">All questions in this episode will be for audience members</p>
+                      <div className="space-y-3">
+                        <div className="w-full p-3 bg-teal-50 border border-teal-200 rounded">
+                          <strong className="text-teal-800">👥 Audience</strong>
+                          <p className="text-xs text-teal-600 mt-1">All questions in this episode will be for audience members</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="isForBothRolesAudience"
+                            checked={newEpisode.isForBothRoles}
+                            onChange={(e) => setNewEpisode({ ...newEpisode, isForBothRoles: e.target.checked })}
+                            className="rounded"
+                          />
+                          <label htmlFor="isForBothRolesAudience" className="text-sm font-medium text-gray-700">
+                            Also make this episode available for participants
+                          </label>
+                        </div>
+                        {newEpisode.isForBothRoles && (
+                          <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                            ✅ This episode will be available for both participants and audience
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -660,6 +794,7 @@ export default function GeneralAdminPage() {
                         description: '',
                         status: 'DRAFT',
                         targetRole: 'AUDIENCE',
+                        isForBothRoles: false,
                       });
                       setIsEpisodeDialogOpen(true);
                     }}
@@ -681,6 +816,11 @@ export default function GeneralAdminPage() {
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
                             👥 Audience
                           </span>
+                          {episode.isForBothRoles && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              🔄 Both Roles
+                            </span>
+                          )}
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             episode.status === 'PUBLISHED' 
                               ? 'bg-green-100 text-green-800' 
@@ -753,6 +893,328 @@ export default function GeneralAdminPage() {
           </>
         )}
 
+        {/* Question Bank Section */}
+        {activeTab === 'question-bank' && (
+          <>
+            <div className="mb-6">
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-purple-500 hover:bg-purple-600 text-white">
+                    Create New Question
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Create New Question</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Question</label>
+                      <Input
+                        value={newQuestion.question}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
+                        placeholder="Enter question..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Options</label>
+                      {newQuestion.questionType === 'YES_NO' ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="w-8 text-sm font-medium">A:</span>
+                            <Input value="Yes" disabled className="bg-gray-100" />
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="w-8 text-sm font-medium">B:</span>
+                            <Input value="No" disabled className="bg-gray-100" />
+                          </div>
+                        </div>
+                      ) : (
+                        newQuestion.options.map((option, index) => (
+                          <Input
+                            key={index}
+                            value={option}
+                            onChange={(e) => {
+                              const newOptions = [...newQuestion.options];
+                              newOptions[index] = e.target.value;
+                              setNewQuestion({ ...newQuestion, options: newOptions });
+                            }}
+                            placeholder={`Option ${index + 1}`}
+                            className="mb-2"
+                          />
+                        ))
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Correct Answer {newQuestion.questionType === 'YES_NO' ? '(0=Yes, 1=No)' : '(0-3)'}
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={newQuestion.questionType === 'YES_NO' ? '1' : '3'}
+                        value={newQuestion.correctAnswer}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Difficulty (1-10)</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={newQuestion.difficulty}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Target Role</label>
+                      <select
+                        value={newQuestion.targetRole}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, targetRole: e.target.value as 'PARTICIPANT' | 'AUDIENCE' })}
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="PARTICIPANT">🎯 Participant</option>
+                        <option value="AUDIENCE">👥 Audience</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Question Type</label>
+                      <select
+                        value={newQuestion.questionType}
+                        onChange={(e) => {
+                          const questionType = e.target.value as 'MULTIPLE_CHOICE' | 'YES_NO';
+                          setNewQuestion({ 
+                            ...newQuestion, 
+                            questionType,
+                            options: questionType === 'YES_NO' ? ['Yes', 'No'] : ['', '', '', ''],
+                            correctAnswer: questionType === 'YES_NO' ? 0 : newQuestion.correctAnswer
+                          });
+                        }}
+                        className="w-full p-2 border rounded"
+                      >
+                        <option value="MULTIPLE_CHOICE">Multiple Choice (A, B, C, D)</option>
+                        <option value="YES_NO">Yes/No Question</option>
+                      </select>
+                    </div>
+                    <Button onClick={handleCreateQuestion} className="w-full bg-purple-500 hover:bg-purple-600">
+                      Create Question
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="mb-6 bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl p-6 shadow-xl">
+              <h2 className="text-3xl font-bold text-white mb-2">📚 Question Bank</h2>
+              <p className="text-purple-100 text-lg">Manage all questions independently of episodes</p>
+            </div>
+
+            {questions.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-white rounded-xl p-10 max-w-lg mx-auto shadow-2xl border-4 border-purple-300">
+                  <div className="text-7xl mb-4">📚</div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                    No Questions Yet
+                  </h3>
+                  <p className="text-gray-600 mb-6 text-lg">
+                    Create your first question to start building your question bank.
+                  </p>
+                  <Button
+                    onClick={() => setIsDialogOpen(true)}
+                    className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold text-lg px-8 py-3 shadow-lg"
+                  >
+                    ➕ Create First Question
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {questions.map((question, index) => (
+                  <Card key={question.id} className="p-6 bg-white shadow-xl border-2 border-purple-200 hover:border-purple-400 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-xl font-bold text-gray-800">Q{index + 1}. {question.question}</h3>
+                          <div className="flex space-x-2">
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
+                              question.targetRole === 'PARTICIPANT' 
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                                : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
+                            }`}>
+                              {question.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                            </span>
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
+                              question.questionType === 'YES_NO' 
+                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white' 
+                                : 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                            }`}>
+                              {question.questionType === 'YES_NO' ? 'Yes/No' : 'Multiple Choice'}
+                            </span>
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
+                              question.isActive 
+                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
+                                : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                            }`}>
+                              {question.isActive ? '✅ Active' : '❌ Inactive'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                          {question.options.map((option, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-3 rounded text-sm ${
+                                idx === question.correctAnswer
+                                  ? 'bg-green-100 text-green-800 border border-green-300 font-medium'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {String.fromCharCode(65 + idx)}. {option}
+                              {idx === question.correctAnswer && ' ✓'}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-4 text-sm text-gray-600">
+                          <span className="bg-purple-50 px-3 py-1 rounded-full">Difficulty: {question.difficulty}/10</span>
+                          <span className="bg-gray-100 px-3 py-1 rounded-full">Created: {new Date(question.createdAt).toLocaleDateString()}</span>
+                          {question.episodeId && (
+                            <span className="bg-blue-50 px-3 py-1 rounded-full">Linked to Episode</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {!question.episodeId && (
+                          <Button
+                            onClick={() => {
+                              setSelectedQuestionToLink(question);
+                              setIsLinkQuestionOpen(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                          >
+                            Link to Episode
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() => toggleQuestionStatus(question.id, question.isActive)}
+                          variant={question.isActive ? 'destructive' : 'default'}
+                          size="sm"
+                        >
+                          {question.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this question?')) {
+                              handleDeleteQuestion(question.id);
+                            }
+                          }}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* User Management Section */}
+        {activeTab === 'user-management' && (
+          <>
+            <div className="mb-6 bg-gradient-to-r from-orange-600 to-orange-700 rounded-xl p-6 shadow-xl">
+              <h2 className="text-3xl font-bold text-white mb-2">👥 User Management</h2>
+              <p className="text-orange-100 text-lg">Manage users and reset passwords</p>
+            </div>
+
+            {users.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-white rounded-xl p-10 max-w-lg mx-auto shadow-2xl border-4 border-orange-300">
+                  <div className="text-7xl mb-4">👥</div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                    No Users Found
+                  </h3>
+                  <p className="text-gray-600 mb-6 text-lg">
+                    No users are currently registered in the system.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {users.map((user) => (
+                  <Card key={user.id} className="p-6 bg-white shadow-xl border-2 border-orange-200 hover:border-orange-400 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-xl font-bold text-gray-800">{user.username}</h3>
+                          <div className="flex space-x-2">
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
+                              user.role === 'GENERAL_ADMIN' 
+                                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
+                                : user.role === 'GAME_MASTER'
+                                ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white'
+                                : user.role === 'PARTICIPANT'
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                                : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
+                            }`}>
+                              {user.role === 'GENERAL_ADMIN' ? '🔑 Admin' : 
+                               user.role === 'GAME_MASTER' ? '🎮 Game Master' :
+                               user.role === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                            </span>
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
+                              user.isActive 
+                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
+                                : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                            }`}>
+                              {user.isActive ? '✅ Active' : '❌ Inactive'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">Email</p>
+                            <p className="font-medium text-gray-800">{user.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">Unique Number</p>
+                            <p className="font-medium text-gray-800">{user.uniqueNumber}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">Score</p>
+                            <p className="font-medium text-gray-800">{user.score}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">Joined</p>
+                            <p className="font-medium text-gray-800">{new Date(user.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            setSelectedUserToReset(user);
+                            setIsResetPasswordOpen(true);
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100"
+                        >
+                          Reset Password
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
         {/* View Episode Questions Modal */}
         <Dialog open={isViewQuestionsOpen} onOpenChange={setIsViewQuestionsOpen}>
           <DialogContent className="bg-white max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -820,17 +1282,134 @@ export default function GeneralAdminPage() {
                           Difficulty: {question.difficulty} | Status: {question.isActive ? '✅ Active' : '❌ Inactive'}
                         </div>
                       </div>
-                      <Button
-                        onClick={() => toggleQuestionStatus(question.id, question.isActive)}
-                        variant={question.isActive ? 'destructive' : 'default'}
-                        size="sm"
-                      >
-                        {question.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => toggleQuestionStatus(question.id, question.isActive)}
+                          variant={question.isActive ? 'destructive' : 'default'}
+                          size="sm"
+                        >
+                          {question.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this question?')) {
+                              handleDeleteQuestion(question.id);
+                            }
+                          }}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          Delete
+                        </Button>
+                      </div>
                   </div>
                 </Card>
                 ))
               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Link Question to Episode Modal */}
+        <Dialog open={isLinkQuestionOpen} onOpenChange={setIsLinkQuestionOpen}>
+          <DialogContent className="bg-white">
+            <DialogHeader>
+              <DialogTitle>Link Question to Episode</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {selectedQuestionToLink && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Question:</h4>
+                  <p className="text-gray-700">{selectedQuestionToLink.question}</p>
+                  <div className="mt-2 flex gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      selectedQuestionToLink.targetRole === 'PARTICIPANT' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-teal-100 text-teal-800'
+                    }`}>
+                      {selectedQuestionToLink.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                    </span>
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      Difficulty: {selectedQuestionToLink.difficulty}/10
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-2">Select Episode</label>
+                <select
+                  onChange={(e) => {
+                    if (e.target.value && selectedQuestionToLink) {
+                      handleLinkQuestionToEpisode(selectedQuestionToLink.id, e.target.value);
+                    }
+                  }}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">-- Select an Episode --</option>
+                  {episodes.map((episode) => (
+                    <option key={episode.id} value={episode.id}>
+                      {episode.targetRole === 'PARTICIPANT' ? '🎯' : '👥'} {episode.title} ({episode.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Password Modal */}
+        <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+          <DialogContent className="bg-white">
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {selectedUserToReset && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">User Details:</h4>
+                  <p className="text-gray-700"><strong>Username:</strong> {selectedUserToReset.username}</p>
+                  <p className="text-gray-700"><strong>Email:</strong> {selectedUserToReset.email}</p>
+                  <p className="text-gray-700"><strong>Role:</strong> {selectedUserToReset.role}</p>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-2">New Password</label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password..."
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  The user will need to use this new password to log in.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    if (selectedUserToReset && newPassword.trim()) {
+                      handleResetPassword(selectedUserToReset.id, newPassword);
+                    } else {
+                      alert('Please enter a new password');
+                    }
+                  }}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600"
+                >
+                  Reset Password
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsResetPasswordOpen(false);
+                    setNewPassword('');
+                    setSelectedUserToReset(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

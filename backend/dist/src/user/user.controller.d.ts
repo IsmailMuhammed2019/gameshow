@@ -8,9 +8,9 @@ export declare class UserController {
         id: string;
         username: string;
         email: string;
-        uniqueNumber: string;
         password: string;
         role: import(".prisma/client").$Enums.UserRole;
+        uniqueNumber: string;
         isActive: boolean;
         score: bigint;
         createdAt: Date;
@@ -22,9 +22,9 @@ export declare class UserController {
         id: string;
         username: string;
         email: string;
-        uniqueNumber: string;
         password: string;
         role: import(".prisma/client").$Enums.UserRole;
+        uniqueNumber: string;
         isActive: boolean;
         score: bigint;
         createdAt: Date;
@@ -36,9 +36,9 @@ export declare class UserController {
         id: string;
         username: string;
         email: string;
-        uniqueNumber: string;
         password: string;
         role: import(".prisma/client").$Enums.UserRole;
+        uniqueNumber: string;
         isActive: boolean;
         score: bigint;
         createdAt: Date;
@@ -50,9 +50,9 @@ export declare class UserController {
         id: string;
         username: string;
         email: string;
-        uniqueNumber: string;
         password: string;
         role: import(".prisma/client").$Enums.UserRole;
+        uniqueNumber: string;
         isActive: boolean;
         score: bigint;
         createdAt: Date;
@@ -61,4 +61,9 @@ export declare class UserController {
         score: number;
     }>;
     remove(id: string): Promise<void>;
+    resetPassword(id: string, body: {
+        newPassword: string;
+    }, req: any): Promise<{
+        message: string;
+    }>;
 }

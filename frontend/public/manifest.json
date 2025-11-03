@@ -1,5 +1,5 @@
 {
-  "name": "Fun & Banter  ",
+  "name": "Fun & Banter",
   "short_name": "Millionaire",
   "description": "Your go-to space for entertainment, energy, and endless banter.",
   "start_url": "/",
@@ -7,21 +7,35 @@
   "background_color": "#1a1a1a",
   "theme_color": "#00378a",
   "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
       "src": "/logo.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/logo.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": ["games", "entertainment"],
   "lang": "en",
-  "dir": "ltr"
+  "dir": "ltr",
+  "prefer_related_applications": false
 }

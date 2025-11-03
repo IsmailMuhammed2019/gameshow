@@ -1,6 +1,8 @@
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from '../user/dto/create-user.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
@@ -9,8 +11,8 @@ export declare class AuthController {
         id: string;
         username: string;
         email: string;
-        uniqueNumber: string;
         role: import(".prisma/client").$Enums.UserRole;
+        uniqueNumber: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
@@ -27,4 +29,14 @@ export declare class AuthController {
         };
     }>;
     getProfile(req: any): any;
+    forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{
+        message: string;
+        resetToken?: undefined;
+    } | {
+        message: string;
+        resetToken: string;
+    }>;
+    resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{
+        message: string;
+    }>;
 }

@@ -63,6 +63,37 @@ gameshow/
 └── README.md
 ```
 
+## 🚀 Quick Deployment (NEW!)
+
+**The app now works on ANY system!** Deploy in minutes:
+
+```bash
+./quick-deploy.sh
+```
+
+Choose your deployment type:
+1. **Local Machine** - Test on your computer
+2. **Local Network** - Access from any device on your WiFi (phones, tablets, etc.)
+3. **Public Server** - Deploy to cloud (AWS, DigitalOcean, etc.)
+
+**That's it!** The script will:
+- ✅ Auto-detect your system
+- ✅ Configure everything
+- ✅ Build and start all services
+- ✅ Validate the deployment
+
+### Access from Mobile Devices 📱
+
+Once deployed, access from **any device**:
+- Same WiFi: `http://YOUR_LOCAL_IP:3000`
+- Internet: `http://YOUR_PUBLIC_IP:3000`
+
+Works on: Phones, tablets, laptops, desktops - any device with a browser!
+
+📖 **Full Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for complete instructions
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -79,7 +110,12 @@ gameshow/
    cd gameshow
    ```
 
-2. **Start the application with Docker Compose**
+2. **Quick Deploy (Easiest)**
+   ```bash
+   ./quick-deploy.sh
+   ```
+
+3. **Or Manual Start**
    ```bash
    # For development
    docker-compose -f docker-compose.dev.yml up --build
@@ -88,10 +124,10 @@ gameshow/
    docker-compose up --build
    ```
 
-3. **Access the application**
+4. **Access the application**
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:3001
-   - Database: localhost:5432
+   - Health Check: http://localhost:3001/health
 
 ### Local Development Setup
 

@@ -11,10 +11,24 @@ const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 let PrismaService = class PrismaService extends client_1.PrismaClient {
     async onModuleInit() {
-        await this.$connect();
+        try {
+            console.log('Connecting to database...');
+            await this.$connect();
+            console.log('Database connected successfully');
+        }
+        catch (error) {
+            console.error('Failed to connect to database:', error);
+            throw error;
+        }
     }
     async onModuleDestroy() {
-        await this.$disconnect();
+        try {
+            await this.$disconnect();
+            console.log('Database disconnected');
+        }
+        catch (error) {
+            console.error('Error disconnecting from database:', error);
+        }
     }
 };
 exports.PrismaService = PrismaService;

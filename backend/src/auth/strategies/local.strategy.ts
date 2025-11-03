@@ -10,10 +10,21 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(username: string, password: string): Promise<any> {
-    const user = await this.authService.validateUser(username, password);
-    if (!user) {
-      throw new UnauthorizedException();
+    try {
+      const user = await this.authService.validateUser(username, password);
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      return user;
+    } catch (error) {
+      // Re-throw UnauthorizedException as-is
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // Log other errors for debugging
+      console.error('Error in LocalStrategy.validate:', error);
+      // Re-throw to let NestJS handle it
+      throw error;
     }
-    return user;
   }
 }

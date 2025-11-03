@@ -52,6 +52,7 @@ export class EpisodeService {
   }
 
   async update(id: string, updateEpisodeDto: UpdateEpisodeDto) {
+    console.log(`Updating episode ${id} with data:`, updateEpisodeDto);
     return this.prisma.episode.update({
       where: { id },
       data: updateEpisodeDto,
@@ -79,7 +80,10 @@ export class EpisodeService {
 
     // Filter by targetRole if provided
     if (targetRole && (targetRole === 'PARTICIPANT' || targetRole === 'AUDIENCE')) {
-      whereClause.targetRole = targetRole;
+      whereClause.OR = [
+        { targetRole: targetRole },
+        { isForBothRoles: true }
+      ];
     }
 
     return this.prisma.episode.findMany({

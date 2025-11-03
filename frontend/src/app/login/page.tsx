@@ -26,7 +26,40 @@ export default function LoginPage() {
       await login(formData.username, formData.password);
       router.push('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      // Extract error information properly to avoid serialization issues
+      let errorMessage = 'Login failed';
+      
+      if (err.response) {
+        // Axios response error
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        if (status === 500) {
+          errorMessage = data?.message || data?.error || 'Internal server error. Please check if the backend is running and try again.';
+          console.error('Login 500 error:', {
+            status,
+            message: data?.message,
+            error: data?.error,
+            fullResponse: data,
+          });
+        } else if (status === 401) {
+          errorMessage = 'Invalid username or password';
+        } else {
+          errorMessage = data?.message || `Server error (${status})`;
+        }
+      } else if (err.request) {
+        // Request made but no response received
+        errorMessage = 'Cannot connect to server. Please check if the backend is running.';
+        console.error('Login network error:', err.code || 'Network error');
+      } else if (err.code === 'ECONNREFUSED') {
+        errorMessage = 'Cannot connect to server. Please check if the backend is running.';
+      } else {
+        // Error setting up the request or other error
+        errorMessage = err.message || 'Login failed';
+        console.error('Login error:', err.message || err);
+      }
+      
+      setError(errorMessage);
     }
   };
 
@@ -102,6 +135,15 @@ export default function LoginPage() {
                   ) : (
                     <Eye className="h-4 w-4 text-gray-400" />
                   )}
+                </button>
+              </div>
+              <div className="mt-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => router.push('/forgot-password')}
+                  className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                >
+                  Forgot your password?
                 </button>
               </div>
             </div>

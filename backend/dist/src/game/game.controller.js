@@ -44,6 +44,12 @@ let GameController = class GameController {
     async updateQuestion(id, updateData) {
         return this.gameService.updateQuestion(id, updateData);
     }
+    async deleteQuestion(id, req) {
+        if (req.user.role !== 'GENERAL_ADMIN') {
+            throw new Error('Unauthorized: Only general admin can delete questions');
+        }
+        return this.gameService.deleteQuestion(id);
+    }
     startGame(req, body = {}) {
         return this.gameService.startGame(req.user.userId, body.episodeId);
     }
@@ -112,6 +118,14 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "updateQuestion", null);
+__decorate([
+    (0, common_1.Delete)('questions/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], GameController.prototype, "deleteQuestion", null);
 __decorate([
     (0, common_1.Post)('start'),
     __param(0, (0, common_1.Request)()),

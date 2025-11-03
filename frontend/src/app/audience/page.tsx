@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { LogOut, Trophy, Users, Eye } from 'lucide-react';
 import io from 'socket.io-client';
 import Leaderboard from '@/components/Leaderboard';
+import ConnectionStatus from '@/components/ConnectionStatus';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export default function AudiencePage() {
   const router = useRouter();
@@ -39,6 +41,8 @@ export default function AudiencePage() {
   const [timeLimit, setTimeLimit] = useState<number>(10);
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [currentDifficulty, setCurrentDifficulty] = useState<number>(0);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const networkStatus = useNetworkStatus();
   // Removed screen overlay functionality
 
   useEffect(() => {
@@ -48,18 +52,25 @@ export default function AudiencePage() {
     }
 
     // Initialize socket connection
-    const newSocket = io('http://94.237.53.19:3001', {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    const newSocket = io(wsUrl, {
       transports: ['polling', 'websocket'],
-      timeout: 10000,
+      timeout: 20000,
       forceNew: true,
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionDelay: 3000,
+      reconnectionDelayMax: 15000,
+      autoConnect: true,
+      upgrade: true,
+      rememberUpgrade: false,
     });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
+      console.log('WebSocket connected');
       setIsConnected(true);
+      setIsReconnecting(false);
       newSocket.emit('join_game', {
         userId: user.id,
         role: user.role,
@@ -67,7 +78,24 @@ export default function AudiencePage() {
     });
 
     newSocket.on('disconnect', () => {
+      console.log('WebSocket disconnected');
       setIsConnected(false);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      setIsConnected(false);
+      setIsReconnecting(true);
+    });
+
+    newSocket.on('reconnect', () => {
+      console.log('WebSocket reconnected');
+      setIsReconnecting(false);
+    });
+
+    newSocket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`WebSocket reconnection attempt ${attemptNumber}`);
+      setIsReconnecting(true);
     });
 
     newSocket.on('game_started', (session: any) => {
@@ -201,8 +229,20 @@ export default function AudiencePage() {
     return null;
   }
 
+  const handleRetryConnection = () => {
+    if (socket) {
+      socket.disconnect();
+      socket.connect();
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 audience-screen">
+      <ConnectionStatus 
+        isConnected={isConnected}
+        isReconnecting={isReconnecting}
+        onRetry={handleRetryConnection}
+      />
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-4">

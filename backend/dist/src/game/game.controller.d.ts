@@ -97,6 +97,19 @@ export declare class GameController {
         questionType: import(".prisma/client").$Enums.QuestionType;
         episodeId: string | null;
     }>;
+    deleteQuestion(id: string, req: any): Promise<{
+        id: string;
+        isActive: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        targetRole: import(".prisma/client").$Enums.UserRole;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        difficulty: number;
+        questionType: import(".prisma/client").$Enums.QuestionType;
+        episodeId: string | null;
+    }>;
     startGame(req: any, body?: {
         episodeId?: string;
     }): Promise<{

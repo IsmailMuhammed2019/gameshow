@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch, Delete } from '@nestjs/common';
 import { GameService } from './game.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
@@ -43,6 +43,15 @@ export class GameController {
   @Patch('questions/:id')
   async updateQuestion(@Param('id') id: string, @Body() updateData: { isActive?: boolean }) {
     return this.gameService.updateQuestion(id, updateData);
+  }
+
+  @Delete('questions/:id')
+  async deleteQuestion(@Param('id') id: string, @Request() req) {
+    // Only general admin can delete questions
+    if (req.user.role !== 'GENERAL_ADMIN') {
+      throw new Error('Unauthorized: Only general admin can delete questions');
+    }
+    return this.gameService.deleteQuestion(id);
   }
 
   @Post('start')

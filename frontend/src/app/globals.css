@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Safari-specific fixes */
+@import '../styles/safari-fixes.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;

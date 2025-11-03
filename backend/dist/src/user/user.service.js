@@ -84,14 +84,24 @@ let UserService = class UserService {
         };
     }
     async findByUsername(username) {
-        const user = await this.prisma.user.findUnique({ where: { username } });
-        if (user) {
-            return {
-                ...user,
-                score: Number(user.score),
-            };
+        try {
+            const user = await this.prisma.user.findUnique({ where: { username } });
+            if (user) {
+                return {
+                    ...user,
+                    score: Number(user.score),
+                };
+            }
+            return null;
         }
-        return null;
+        catch (error) {
+            console.error('Database error in findByUsername:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown database error';
+            throw new common_1.InternalServerErrorException({
+                message: 'Database connection error',
+                error: errorMessage,
+            });
+        }
     }
     async findByUniqueNumber(uniqueNumber) {
         const user = await this.prisma.user.findUnique({ where: { uniqueNumber } });
@@ -102,6 +112,68 @@ let UserService = class UserService {
             };
         }
         return null;
+    }
+    async findByEmail(email) {
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        if (user) {
+            return {
+                ...user,
+                score: Number(user.score),
+            };
+        }
+        return null;
+    }
+    async findByEmailOrUsername(emailOrUsername) {
+        const user = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { email: emailOrUsername },
+                    { username: emailOrUsername },
+                ],
+            },
+        });
+        if (user) {
+            return {
+                ...user,
+                score: Number(user.score),
+            };
+        }
+        return null;
+    }
+    async setResetPasswordToken(userId, token, expiresAt) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                resetPasswordToken: token,
+                resetPasswordExpires: expiresAt,
+            },
+        });
+    }
+    async findByResetToken(token) {
+        const user = await this.prisma.user.findFirst({
+            where: {
+                resetPasswordToken: token,
+                resetPasswordExpires: {
+                    gt: new Date(),
+                },
+            },
+        });
+        if (user) {
+            return {
+                ...user,
+                score: Number(user.score),
+            };
+        }
+        return null;
+    }
+    async clearResetPasswordToken(userId) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                resetPasswordToken: null,
+                resetPasswordExpires: null,
+            },
+        });
     }
     async update(id, updateUserDto) {
         await this.findOne(id);
@@ -124,6 +196,19 @@ let UserService = class UserService {
     }
     async validatePassword(plainPassword, hashedPassword) {
         return bcrypt.compare(plainPassword, hashedPassword);
+    }
+    async resetPassword(userId, newPassword) {
+        await this.findOne(userId);
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: {
+                password: hashedPassword,
+                resetPasswordToken: null,
+                resetPasswordExpires: null,
+            }
+        });
+        return { message: 'Password reset successfully' };
     }
     generateUniqueNumber() {
         return Math.floor(100000 + Math.random() * 900000).toString();

@@ -37,6 +37,12 @@ let UserController = class UserController {
     remove(id) {
         return this.userService.remove(id);
     }
+    resetPassword(id, body, req) {
+        if (req.user.role !== 'GENERAL_ADMIN') {
+            throw new Error('Unauthorized: Only general admin can reset passwords');
+        }
+        return this.userService.resetPassword(id, body.newPassword);
+    }
 };
 exports.UserController = UserController;
 __decorate([
@@ -78,6 +84,16 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], UserController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Patch)(':id/reset-password'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", void 0)
+], UserController.prototype, "resetPassword", null);
 exports.UserController = UserController = __decorate([
     (0, common_1.Controller)('users'),
     __metadata("design:paramtypes", [user_service_1.UserService])

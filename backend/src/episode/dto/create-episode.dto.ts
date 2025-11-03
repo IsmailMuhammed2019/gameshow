@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsBoolean } from 'class-validator';
 import { EpisodeStatus, UserRole } from '@prisma/client';
 
 export class CreateEpisodeDto {
@@ -15,4 +15,8 @@ export class CreateEpisodeDto {
 
   @IsEnum(UserRole)
   targetRole: UserRole; // PARTICIPANT or AUDIENCE
+
+  @IsOptional()
+  @IsBoolean()
+  isForBothRoles?: boolean; // If true, episode works for both participants and audience
 }
