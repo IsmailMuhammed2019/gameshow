@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { LogOut, Trophy, Users } from 'lucide-react';
+import { LogOut, Trophy, Users, UsersRound } from 'lucide-react';
 import io from 'socket.io-client';
 import Celebration from '@/components/Celebration';
 import SoundEffects from '@/components/SoundEffects';
@@ -17,7 +17,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export default function ParticipantPage() {
   const router = useRouter();
-  const { user, logout, setUser } = useAuthStore();
+  const { user, logout, setUser, switchRole } = useAuthStore();
   const { 
     gameSession, 
     currentQuestion, 
@@ -46,6 +46,8 @@ export default function ParticipantPage() {
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [currentDifficulty, setCurrentDifficulty] = useState<number>(0);
   const networkStatus = useNetworkStatus();
+  const [scoreAnimation, setScoreAnimation] = useState(false);
+  const prevScoreRef = useRef<number>(user?.score || 0);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -112,9 +114,10 @@ export default function ParticipantPage() {
       const question = questionData.participantQuestion || questionData;
       setCurrentQuestion(question);
       setSelectedOption(null);
-      setAnswerResult(undefined as any);
+      setAnswerResult(undefined);
       setHasAnswered(false);
       setShowCelebration(null);
+      setAnswering(false);
     });
 
     newSocket.on('timer_started', (timerData: any) => {
@@ -159,8 +162,18 @@ export default function ParticipantPage() {
           submitted: true,
         });
         
-        // Scores are now updated by the backend when answers are revealed
-        // No need to update frontend score here
+        // Update user score if answer is correct
+        if (userAnswer.isCorrect && user) {
+          const newScore = (user.score || 0) + 1;
+          setUser({
+            ...user,
+            score: newScore,
+          });
+          // Trigger score animation
+          setScoreAnimation(true);
+          setTimeout(() => setScoreAnimation(false), 1000);
+          prevScoreRef.current = newScore;
+        }
         
         // Trigger celebration animation AFTER a delay to show the answer first
         setTimeout(() => {
@@ -193,6 +206,30 @@ export default function ParticipantPage() {
       // Update participants and audience lists
       setParticipants(data.participants || []);
       setAudience(data.audience || []);
+      
+      // Update current user's score from the updated list
+      if (user?.id) {
+        const updatedUserData = [...(data.participants || []), ...(data.audience || [])].find(
+          (u: any) => u.id === user.id
+        );
+        if (updatedUserData && updatedUserData.score !== undefined) {
+          const newScore = updatedUserData.score;
+          const oldScore = prevScoreRef.current;
+          
+          // Trigger animation if score increased
+          if (newScore > oldScore) {
+            setScoreAnimation(true);
+            setTimeout(() => setScoreAnimation(false), 1000);
+          }
+          
+          setUser({
+            ...user,
+            score: newScore,
+          });
+          prevScoreRef.current = newScore;
+        }
+      }
+      
       console.log('Updated store - participants:', data.participants || []);
       console.log('Updated store - audience:', data.audience || []);
     });
@@ -212,6 +249,7 @@ export default function ParticipantPage() {
 
     newSocket.on('error', (error: any) => {
       console.error('WebSocket error:', error);
+      setAnswering(false);
     });
 
     return () => {
@@ -249,8 +287,34 @@ export default function ParticipantPage() {
   };
 
   const handleLogout = () => {
+    if (socket) {
+      socket.disconnect();
+    }
     logout();
     router.push('/');
+  };
+
+  const handleSwitchRole = async () => {
+    if (!confirm('Switch to Audience mode? You will be able to watch the game but cannot answer questions.')) {
+      return;
+    }
+
+    try {
+      // Disconnect WebSocket before switching roles
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+
+      // Switch role
+      await switchRole('AUDIENCE');
+      
+      // Redirect to audience page
+      router.push('/audience');
+    } catch (error: any) {
+      console.error('Error switching role:', error);
+      alert(error.response?.data?.message || error.message || 'Failed to switch role');
+    }
   };
 
   if (!user || user.role !== 'PARTICIPANT') {
@@ -272,40 +336,51 @@ export default function ParticipantPage() {
         onRetry={handleRetryConnection}
       />
       {/* TV Show Header */}
-      <div className="game-show-header p-6 mb-8 rounded-b-3xl">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-6">
-            <div className="relative">
+      <div className="game-show-header p-4 md:p-6 mb-8 rounded-b-3xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center space-x-3 md:space-x-6 flex-1 min-w-0">
+            <div className="relative flex-shrink-0">
               <img 
                 src="/logo.png" 
                 alt="Logo" 
-                className="w-48 h-24 shadow-2xl"
+                className="w-24 h-12 md:w-48 md:h-24 shadow-2xl"
               />
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 md:w-6 md:h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl md:text-4xl font-bold text-white mb-1 md:mb-2 drop-shadow-lg truncate">
                 🎮 PLAYER STATION
               </h1>
-              <p className="text-xl text-orange-300 font-medium">
-                Welcome, {user.username} • #{user.uniqueNumber}
+              <p className="text-sm md:text-xl text-orange-300 font-medium truncate">
+                {user.username} • #{user.uniqueNumber}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 bg-black/30 px-4 py-2 rounded-full">
-              <div className={`w-4 h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-              <span className="text-white font-medium">
+          <div className="flex items-center flex-wrap gap-2 md:gap-4 w-full md:w-auto">
+            <div className="flex items-center space-x-2 md:space-x-3 bg-black/30 px-2 md:px-4 py-1.5 md:py-2 rounded-full flex-shrink-0">
+              <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="text-white font-medium text-xs md:text-base whitespace-nowrap">
                 {isConnected ? 'LIVE' : 'OFFLINE'}
               </span>
             </div>
             <Button 
               variant="outline" 
-              onClick={handleLogout} 
-              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30"
+              onClick={handleSwitchRole} 
+              className="bg-teal-600/20 border-teal-500 text-white hover:bg-teal-600/30 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
+              title="Switch to Audience mode"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Exit Game
+              <UsersRound className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden sm:inline">Switch to Audience</span>
+              <span className="sm:hidden">Switch</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleLogout} 
+              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
+            >
+              <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden sm:inline">Exit Game</span>
+              <span className="sm:hidden">Exit</span>
             </Button>
           </div>
         </div>
@@ -324,10 +399,17 @@ export default function ParticipantPage() {
                 Current points earned
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
-              <div className="text-6xl font-bold text-white mb-4">
+            <CardContent className="text-center relative">
+              <div className={`text-6xl font-bold text-white mb-4 transition-all duration-500 ${
+                scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
+              }`}>
                 {user.score || 0}
               </div>
+              {scoreAnimation && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-4xl text-green-400 font-bold animate-bounce">+1</span>
+                </div>
+              )}
               <p className="text-orange-200 font-medium">POINTS</p>
               <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20">
                 <p className="text-sm text-white/80">Player ID</p>
@@ -480,16 +562,16 @@ export default function ParticipantPage() {
                         <Button
                           key={index}
                           variant="outline"
-                          className={`${buttonClass} h-20 text-left justify-start p-6 text-lg font-medium ${
+                          className={`${buttonClass} min-h-20 text-left justify-start p-6 text-lg font-medium ${
                             selectedOption === index ? 'ring-4 ring-orange-500 scale-105' : ''
                           }`}
                           onClick={() => submitAnswer(index)}
                           disabled={isDisabled}
                         >
-                          <span className="font-bold text-3xl text-orange-600 mr-4">
+                          <span className="font-bold text-3xl text-orange-600 mr-4 flex-shrink-0">
                             {String.fromCharCode(65 + index)}
                           </span>
-                          <span className="text-lg">{option}</span>
+                          <span className="text-lg break-words whitespace-normal flex-1">{option}</span>
                         </Button>
                       );
                     })}

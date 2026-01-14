@@ -54,7 +54,7 @@ export class EpisodeController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req) {
+  async remove(@Param('id') id: string, @Request() req) {
     // Only general admin can delete episodes
     if (req.user.role !== 'GENERAL_ADMIN') {
       throw new Error('Unauthorized: Only general admin can delete episodes');

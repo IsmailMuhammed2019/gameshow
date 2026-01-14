@@ -43,6 +43,20 @@ let UserController = class UserController {
         }
         return this.userService.resetPassword(id, body.newPassword);
     }
+    switchRole(req, body) {
+        const currentRole = req.user.role;
+        const allowedRoles = ['PARTICIPANT', 'AUDIENCE'];
+        if (!allowedRoles.includes(currentRole)) {
+            throw new Error('Unauthorized: Only participants and audience members can switch roles');
+        }
+        if (!allowedRoles.includes(body.newRole)) {
+            throw new Error('Invalid role: Can only switch between PARTICIPANT and AUDIENCE');
+        }
+        if (currentRole === body.newRole) {
+            throw new Error('You are already in this role');
+        }
+        return this.userService.update(req.user.userId, { role: body.newRole });
+    }
 };
 exports.UserController = UserController;
 __decorate([
@@ -94,6 +108,15 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", void 0)
 ], UserController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Patch)('me/switch-role'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], UserController.prototype, "switchRole", null);
 exports.UserController = UserController = __decorate([
     (0, common_1.Controller)('users'),
     __metadata("design:paramtypes", [user_service_1.UserService])

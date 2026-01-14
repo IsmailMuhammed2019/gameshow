@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { LogOut, Trophy, Users, Eye } from 'lucide-react';
+import { LogOut, Trophy, Users, Eye, Gamepad2 } from 'lucide-react';
 import io from 'socket.io-client';
 import Leaderboard from '@/components/Leaderboard';
 import ConnectionStatus from '@/components/ConnectionStatus';
@@ -15,7 +15,7 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export default function AudiencePage() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, switchRole, setUser } = useAuthStore();
   const { 
     gameSession, 
     currentQuestion, 
@@ -42,6 +42,8 @@ export default function AudiencePage() {
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [currentDifficulty, setCurrentDifficulty] = useState<number>(0);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [scoreAnimation, setScoreAnimation] = useState(false);
+  const prevScoreRef = useRef<number>(user?.score || 0);
   const networkStatus = useNetworkStatus();
   // Removed screen overlay functionality
 
@@ -88,6 +90,11 @@ export default function AudiencePage() {
       setIsReconnecting(true);
     });
 
+    newSocket.on('error', (error: any) => {
+      console.error('WebSocket error:', error);
+      setIsAnswering(false);
+    });
+
     newSocket.on('reconnect', () => {
       console.log('WebSocket reconnected');
       setIsReconnecting(false);
@@ -103,6 +110,7 @@ export default function AudiencePage() {
     });
 
     newSocket.on('new_question', (questionData: any) => {
+      console.log('New question received:', questionData);
       // For audience, use the audience question
       const question = questionData.audienceQuestion || questionData;
       setCurrentQuestion(question);
@@ -111,6 +119,9 @@ export default function AudiencePage() {
       setAnswerResult(null);
       setIsAnswering(false);
       setHasAnswered(false);
+      // Clear any hanging states
+      setTimerActive(false);
+      setTimeLeft(0);
     });
 
     newSocket.on('timer_started', (timerData: any) => {
@@ -133,14 +144,18 @@ export default function AudiencePage() {
 
     newSocket.on('winner_announced', (winner: any) => {
       console.log('Winner announced:', winner);
+      console.log('Winner role:', winner.role);
       // Only show modal for audience winners
       if (winner.role === 'AUDIENCE') {
+        console.log('Adding audience winner to store');
         addWinner(winner);
+        // Store the current winner for the modal
+        setAudienceWinners(prev => [...prev, winner]);
         setShowWinnerModal(true);
-        // Auto-dismiss modal after 3 seconds
+        // Auto-dismiss modal after 5 seconds
         setTimeout(() => {
           setShowWinnerModal(false);
-        }, 3000);
+        }, 5000);
       }
     });
 
@@ -149,20 +164,24 @@ export default function AudiencePage() {
     });
 
     newSocket.on('answer_submitted', (result: any) => {
+      console.log('Answer submitted event received:', result);
       setAnswerResult({
         submitted: true,
         message: 'Answer submitted! Waiting for game master to reveal results...',
         selectedOption: result.selectedOption,
         isCorrect: undefined, // Don't show correct/incorrect yet
+        correctAnswer: undefined, // Don't show correct answer yet
       });
       setIsAnswering(false);
       setHasAnswered(true);
     });
 
     newSocket.on('answer_revealed', (result: any) => {
+      console.log('Answer revealed event received:', result);
       // Find the user's answer in the revealed results
       const userAnswer = result.answers.find((answer: any) => answer.userId === user.id);
       if (userAnswer) {
+        console.log('User answer found:', userAnswer);
         setAnswerResult({
           isCorrect: userAnswer.isCorrect,
           correctAnswer: result.correctAnswer,
@@ -170,8 +189,26 @@ export default function AudiencePage() {
           submitted: true,
         });
         
-        // Scores are now updated by the backend when answers are revealed
-        // No need to update frontend score here
+        // Update user score if answer is correct
+        if (userAnswer.isCorrect && user) {
+          const newScore = (user.score || 0) + 1;
+          setUser({
+            ...user,
+            score: newScore,
+          });
+          // Trigger score animation
+          setScoreAnimation(true);
+          setTimeout(() => setScoreAnimation(false), 1000);
+          prevScoreRef.current = newScore;
+        }
+      } else {
+        // Even if user didn't answer, show the correct answer
+        setAnswerResult({
+          isCorrect: false,
+          correctAnswer: result.correctAnswer,
+          selectedOption: null,
+          submitted: false,
+        });
       }
     });
 
@@ -195,6 +232,30 @@ export default function AudiencePage() {
       // Update audience list
       setAudience(data.audience || []);
       setParticipants(data.participants || []);
+      
+      // Update current user's score from the updated list
+      if (user?.id) {
+        const updatedUserData = [...(data.participants || []), ...(data.audience || [])].find(
+          (u: any) => u.id === user.id
+        );
+        if (updatedUserData && updatedUserData.score !== undefined) {
+          const newScore = updatedUserData.score;
+          const oldScore = prevScoreRef.current;
+          
+          // Trigger animation if score increased
+          if (newScore > oldScore) {
+            setScoreAnimation(true);
+            setTimeout(() => setScoreAnimation(false), 1000);
+          }
+          
+          setUser({
+            ...user,
+            score: newScore,
+          });
+          prevScoreRef.current = newScore;
+        }
+      }
+      
       console.log('Updated store - audience:', data.audience || []);
       console.log('===============================================');
     });
@@ -221,8 +282,34 @@ export default function AudiencePage() {
   };
 
   const handleLogout = () => {
+    if (socket) {
+      socket.disconnect();
+    }
     logout();
     router.push('/');
+  };
+
+  const handleSwitchRole = async () => {
+    if (!confirm('Switch to Participant mode? You will be able to answer questions and compete for prizes.')) {
+      return;
+    }
+
+    try {
+      // Disconnect WebSocket before switching roles
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+
+      // Switch role
+      await switchRole('PARTICIPANT');
+      
+      // Redirect to participant page
+      router.push('/participant');
+    } catch (error: any) {
+      console.error('Error switching role:', error);
+      alert(error.response?.data?.message || error.message || 'Failed to switch role');
+    }
   };
 
   if (!user || user.role !== 'AUDIENCE') {
@@ -244,33 +331,46 @@ export default function AudiencePage() {
         onRetry={handleRetryConnection}
       />
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
           <img 
             src="/logo.png" 
             alt="Logo" 
-            className="w-48 h-24"
+            className="w-24 h-12 md:w-48 md:h-24 flex-shrink-0"
           />
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center">
-              <Eye className="w-6 h-6 mr-2 text-teal-400" />
-              Audience Portal
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg md:text-2xl font-bold text-white flex items-center">
+              <Eye className="w-4 h-4 md:w-6 md:h-6 mr-2 text-teal-400 flex-shrink-0" />
+              <span className="truncate">Audience Portal</span>
             </h1>
-            <p className="text-white/80">Welcome, {user.username} (#{user.uniqueNumber})</p>
+            <p className="text-white/80 text-xs md:text-base truncate">{user.username} (#{user.uniqueNumber})</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-white text-sm">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
+        <div className="flex items-center flex-wrap gap-2 w-full md:w-auto">
+          <div className="flex items-center space-x-2 bg-black/30 px-2 md:px-3 py-1.5 md:py-2 rounded-full flex-shrink-0">
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-white text-xs md:text-sm whitespace-nowrap">
+              {isConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={handleSwitchRole} 
+            className="bg-orange-600/20 border-orange-500 text-white hover:bg-orange-600/30 hover:text-white hover:border-orange-400 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
+            title="Switch to Participant mode"
+          >
+            <Gamepad2 className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+            <span className="font-medium hidden sm:inline">Switch to Participant</span>
+            <span className="font-medium sm:hidden">Switch</span>
+          </Button>
           <Button 
             variant="outline" 
             onClick={handleLogout} 
-            className="ml-4 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white hover:border-white/40 transition-all duration-200"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white hover:border-white/40 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            <span className="font-medium">Logout</span>
+            <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+            <span className="font-medium hidden sm:inline">Logout</span>
+            <span className="font-medium sm:hidden">Exit</span>
           </Button>
         </div> 
       </div>
@@ -278,10 +378,39 @@ export default function AudiencePage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Sidebar - Stats */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Audience Stats */}
-          <Card className="bg-gradient-to-br from-teal-500 to-blue-600 border-2 border-teal-300">
+          {/* Your Score */}
+          <Card className="score-display bg-gradient-to-br from-teal-500 to-blue-600 border-2 border-teal-300">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold text-white mb-2">
+                🏆 YOUR SCORE
+              </CardTitle>
+              <CardDescription className="text-teal-100">
+                Current points earned
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center relative">
+              <div className={`text-6xl font-bold text-white mb-4 transition-all duration-500 ${
+                scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
+              }`}>
+                {user.score || 0}
+              </div>
+              {scoreAnimation && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-4xl text-green-400 font-bold animate-bounce">+1</span>
+                </div>
+              )}
+              <p className="text-teal-100 font-medium">POINTS</p>
+              <div className="mt-4 p-3 bg-white/20 rounded-lg backdrop-blur-sm border border-white/30">
+                <p className="text-sm text-white/80">Audience ID</p>
+                <p className="text-2xl font-bold text-yellow-300">#{user.uniqueNumber}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Audience Stats */}
+          <Card className="bg-gradient-to-br from-teal-500/80 to-blue-600/80 border-2 border-teal-300">
+            <CardHeader className="text-center">
+              <CardTitle className="text-xl font-bold text-white mb-2">
                 👥 AUDIENCE
               </CardTitle>
               <CardDescription className="text-teal-100">
@@ -289,10 +418,6 @@ export default function AudiencePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="p-4 bg-white/20 rounded-lg backdrop-blur-sm border border-white/30">
-                <p className="text-white/80 text-sm mb-1">You are</p>
-                <p className="text-3xl font-bold text-white">#{user.uniqueNumber}</p>
-              </div>
               <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm border border-white/30">
                 <div className="flex justify-between items-center">
                   <span className="text-white/90 text-sm">Total Audience</span>
@@ -395,30 +520,32 @@ export default function AudiencePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {currentQuestion.options && currentQuestion.options.map((option, index) => {
                       const isSelected = selectedOption === index;
-                      const isCorrect = answerResult?.correctAnswer === index;
-                      const isIncorrect = answerResult?.selectedOption === index && !answerResult?.isCorrect;
+                      // Only show correct/incorrect AFTER answer is revealed (isCorrect is defined)
+                      const isRevealed = answerResult?.isCorrect !== undefined;
+                      const isCorrect = isRevealed && answerResult?.correctAnswer === index;
+                      const isIncorrect = isRevealed && answerResult?.selectedOption === index && !answerResult?.isCorrect;
                       
                       return (
                         <button
                           key={index}
                           onClick={() => submitAnswer(index)}
-                          disabled={isAnswering || answerResult || hasAnswered}
-                          className={`option-button p-6 rounded-2xl text-left text-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
-                            isCorrect
+                          disabled={isAnswering || hasAnswered}
+                          className={`option-button p-6 rounded-2xl text-left text-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-start ${
+                            isRevealed && isCorrect
                               ? 'border-4 border-green-400 bg-green-100 text-green-800 shadow-green-glow'
-                              : isIncorrect
+                              : isRevealed && isIncorrect
                               ? 'border-4 border-red-400 bg-red-100 text-red-800'
-                              : isSelected
+                              : isSelected && !isRevealed
                               ? 'border-4 border-teal-400 bg-teal-100 text-teal-800'
                               : 'border-4 border-white/30 bg-white/10 text-white hover:border-teal-400 hover:bg-white/20'
-                          } ${(isAnswering || answerResult || hasAnswered) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+                          } ${(isAnswering || hasAnswered) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
                         >
-                          <span className="inline-block w-10 h-10 bg-teal-400 text-white rounded-full flex items-center justify-center mr-3 font-bold text-xl">
+                          <span className="inline-block w-10 h-10 bg-teal-400 text-white rounded-full flex items-center justify-center mr-3 font-bold text-xl flex-shrink-0">
                             {String.fromCharCode(65 + index)}
                           </span>
-                          {option}
-                          {isCorrect && <span className="ml-2 text-2xl">✅</span>}
-                          {isIncorrect && <span className="ml-2 text-2xl">❌</span>}
+                          <span className="break-words whitespace-normal flex-1">{option}</span>
+                          {isRevealed && isCorrect && <span className="ml-2 text-2xl flex-shrink-0">✅</span>}
+                          {isRevealed && isIncorrect && <span className="ml-2 text-2xl flex-shrink-0">❌</span>}
                         </button>
                       );
                     })}
@@ -426,13 +553,13 @@ export default function AudiencePage() {
                   
                   {answerResult && (
                     <div className={`mt-6 p-6 rounded-lg text-center ${
-                      answerResult.submitted && answerResult.isCorrect !== undefined
+                      answerResult.isCorrect !== undefined
                         ? answerResult.isCorrect
                           ? 'bg-green-100 border-2 border-green-300'
                           : 'bg-red-100 border-2 border-red-300'
                         : 'bg-blue-100 border-2 border-blue-300'
                     }`}>
-                      {answerResult.submitted && answerResult.isCorrect !== undefined ? (
+                      {answerResult.isCorrect !== undefined ? (
                         <>
                           <div className="text-6xl mb-4">
                             {answerResult.isCorrect ? '🎉' : '❌'}
@@ -440,19 +567,21 @@ export default function AudiencePage() {
                           <p className={`text-2xl font-bold ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
                             {answerResult.isCorrect ? '🎊 EXCELLENT! 🎊' : '❌ Not Quite Right'}
                           </p>
-                          {!answerResult.isCorrect && (
+                          {!answerResult.isCorrect && answerResult.correctAnswer !== undefined && (
                             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                               <p className="text-sm text-gray-600">
-                                The correct answer was: <span className="font-bold text-lg">{String.fromCharCode(65 + (answerResult.correctAnswer || 0))}</span>
+                                The correct answer was: <span className="font-bold text-lg">{String.fromCharCode(65 + answerResult.correctAnswer)}</span>
                               </p>
                               <p className="text-xs text-gray-500 mt-1">Keep participating!</p>
                             </div>
                           )}
-                          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                            <p className="text-sm text-green-700 font-medium">
-                              🎉 Great job! You earned a point for that correct answer!
-                            </p>
-                          </div>
+                          {answerResult.isCorrect && (
+                            <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                              <p className="text-sm text-green-700 font-medium">
+                                🎉 Great job! You earned a point for that correct answer!
+                              </p>
+                            </div>
+                          )}
                         </>
                       ) : (
                         <>
@@ -509,16 +638,38 @@ export default function AudiencePage() {
               🎉 Winner! 🎉
             </DialogTitle>
             <DialogDescription className="text-center">
-              {winners.length > 0 && (
-                <span className="mt-4 block">
-                  <span className="text-lg font-bold text-orange-700 block">
-                    {winners[winners.length - 1].username}
+              {(() => {
+                // Get the most recent audience winner
+                const audienceWinnersList = winners.filter(w => w.role === 'AUDIENCE');
+                const latestWinner = audienceWinnersList.length > 0 
+                  ? audienceWinnersList[audienceWinnersList.length - 1]
+                  : audienceWinners.length > 0 
+                    ? audienceWinners[audienceWinners.length - 1]
+                    : null;
+                
+                if (latestWinner) {
+                  return (
+                    <span className="mt-4 block">
+                      <span className="text-lg font-bold text-orange-700 block">
+                        {latestWinner.username}
+                      </span>
+                      <span className="text-orange-600 block">
+                        #{latestWinner.uniqueNumber}
+                      </span>
+                      {latestWinner.responseTime !== undefined && latestWinner.responseTime > 0 && (
+                        <span className="text-sm text-orange-500 block mt-2">
+                          ⏱️ {(latestWinner.responseTime / 1000).toFixed(2)}s
+                        </span>
+                      )}
+                    </span>
+                  );
+                }
+                return (
+                  <span className="mt-4 block text-orange-600">
+                    Congratulations to the winner!
                   </span>
-                  <span className="text-orange-600 block">
-                    #{winners[winners.length - 1].uniqueNumber}
-                  </span>
-                </span>
-              )}
+                );
+              })()}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center mt-4">

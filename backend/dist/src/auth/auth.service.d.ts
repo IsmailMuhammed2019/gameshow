@@ -25,8 +25,8 @@ export declare class AuthService {
         id: string;
         username: string;
         email: string;
-        uniqueNumber: string;
         role: import(".prisma/client").$Enums.UserRole;
+        uniqueNumber: string;
         isActive: boolean;
         resetPasswordToken: string | null;
         resetPasswordExpires: Date | null;

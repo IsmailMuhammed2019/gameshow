@@ -133,6 +133,13 @@ EOF
 echo "✓ Configuration created"
 echo ""
 
+# Ensure persistent data directories exist
+echo "📦 Ensuring persistent data directories exist..."
+mkdir -p data/postgres backups
+echo "   Data directory: $(readlink -f data/postgres 2>/dev/null || echo "$(pwd)/data/postgres")"
+echo "   Backups directory: $(readlink -f backups 2>/dev/null || echo "$(pwd)/backups")"
+echo ""
+
 # Check Docker
 echo "🐳 Checking Docker..."
 if ! command -v docker &> /dev/null; then

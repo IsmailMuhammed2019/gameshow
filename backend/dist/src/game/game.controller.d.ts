@@ -160,9 +160,9 @@ export declare class GameController {
             id: string;
             username: string;
             email: string;
-            uniqueNumber: string;
             password: string;
             role: import(".prisma/client").$Enums.UserRole;
+            uniqueNumber: string;
             isActive: boolean;
             score: bigint;
             resetPasswordToken: string | null;
@@ -188,9 +188,9 @@ export declare class GameController {
             id: string;
             username: string;
             email: string;
-            uniqueNumber: string;
             password: string;
             role: import(".prisma/client").$Enums.UserRole;
+            uniqueNumber: string;
             isActive: boolean;
             score: bigint;
             resetPasswordToken: string | null;

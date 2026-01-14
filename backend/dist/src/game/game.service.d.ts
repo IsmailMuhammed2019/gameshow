@@ -25,6 +25,7 @@ export declare class GameService {
     getUserById(userId: string): Promise<UserWithNumberScore>;
     updateUserScore(userId: string, points: number): Promise<void>;
     getGameSession(gameSessionId: string): Promise<GameSessionWithNumberScore>;
+    updateGameSessionQuestion(gameSessionId: string, questionId: string): Promise<void>;
     getActiveGameSessions(): Promise<GameSessionWithNumberScore[]>;
     clearAllScores(gameMasterId: string): Promise<{
         message: string;
@@ -76,9 +77,9 @@ export declare class GameService {
             id: string;
             username: string;
             email: string;
-            uniqueNumber: string;
             password: string;
             role: import(".prisma/client").$Enums.UserRole;
+            uniqueNumber: string;
             isActive: boolean;
             score: bigint;
             resetPasswordToken: string | null;

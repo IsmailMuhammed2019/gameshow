@@ -7,7 +7,7 @@ import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Play, Pause, Square, Users, Trophy, Settings, LogOut, RotateCcw, Eye } from 'lucide-react';
+import { Play, Pause, Square, Users, Trophy, Settings, LogOut, RotateCcw, Eye, ArrowRight } from 'lucide-react';
 import io from 'socket.io-client';
 import api from '@/lib/api';
 import Leaderboard from '@/components/Leaderboard';
@@ -254,9 +254,14 @@ export default function GameMasterPage() {
 
       newSocket.on('game_started', (session: any) => {
         console.log('Game started event received:', session);
-        setGameSession(session);
-        console.log('Game session set:', session);
-        console.log('Game session status:', session?.status);
+        // Normalize status to lowercase for consistency
+        const normalizedSession = session ? {
+          ...session,
+          status: session.status?.toLowerCase() || session.status
+        } : session;
+        setGameSession(normalizedSession);
+        console.log('Game session set:', normalizedSession);
+        console.log('Game session status:', normalizedSession?.status);
         // Note: First question is now automatically provided by the backend when starting the game
       });
 
@@ -287,6 +292,14 @@ export default function GameMasterPage() {
 
       newSocket.on('game_ended', (results: any) => {
         console.log('Game ended:', results);
+        if (results?.gameSession) {
+          // Normalize status to lowercase for consistency
+          const normalizedSession = {
+            ...results.gameSession,
+            status: results.gameSession.status?.toLowerCase() || results.gameSession.status
+          };
+          setGameSession(normalizedSession);
+        }
       });
 
       newSocket.on('error', (error: any) => {
@@ -316,8 +329,13 @@ export default function GameMasterPage() {
 
              newSocket.on('game_session_updated', (session: any) => {
                console.log('Game session updated:', session);
-               setGameSession(session);
-               console.log('Updated game session status:', session?.status);
+               // Normalize status to lowercase for consistency
+               const normalizedSession = session ? {
+                 ...session,
+                 status: session.status?.toLowerCase() || session.status
+               } : session;
+               setGameSession(normalizedSession);
+               console.log('Updated game session status:', normalizedSession?.status);
              });
 
       newSocket.on('answer_result', (result: any) => {
@@ -384,55 +402,56 @@ export default function GameMasterPage() {
   return (
     <div className="min-h-screen game-master-screen p-4">
       {/* TV Show Header */}
-      <div className="game-show-header p-6 mb-8 rounded-b-3xl">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-6">
-            <div className="relative">
+      <div className="game-show-header p-4 md:p-6 mb-8 rounded-b-3xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center space-x-3 md:space-x-6 flex-1 min-w-0">
+            <div className="relative flex-shrink-0">
           <img
             src="/logo.png"
             alt="Logo"
-                className="w-48 h-24 shadow-2xl"
+                className="w-24 h-12 md:w-48 md:h-24 shadow-2xl"
           />
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 md:w-6 md:h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
-          <div>
-              <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
+          <div className="min-w-0 flex-1">
+              <h1 className="text-xl md:text-4xl font-bold text-white mb-1 md:mb-2 drop-shadow-lg truncate">
                 🎮 GAME MASTER CONTROL
               </h1>
-              <p className="text-xl text-orange-300 font-medium">
-                Welcome, {user.username} • #{user.uniqueNumber}
+              <p className="text-sm md:text-xl text-orange-300 font-medium truncate">
+                {user.username} • #{user.uniqueNumber}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center flex-wrap gap-2 md:gap-4 w-full md:w-auto">
             {/* Notification Counter */}
             {answerNotifications.length > 0 && (
-              <div className="flex items-center space-x-2 bg-orange-500/20 px-3 py-2 rounded-full border border-orange-400">
-                <span className="text-orange-300 font-bold">
+              <div className="flex items-center space-x-1 md:space-x-2 bg-orange-500/20 px-2 md:px-3 py-1.5 md:py-2 rounded-full border border-orange-400 flex-shrink-0">
+                <span className="text-orange-300 font-bold text-xs md:text-sm">
                   🔔 {answerNotifications.length} Answer{answerNotifications.length !== 1 ? 's' : ''}
                 </span>
                 <button
                   onClick={clearNotifications}
-                  className="text-orange-300 hover:text-white text-sm"
+                  className="text-orange-300 hover:text-white text-xs md:text-sm ml-1"
                 >
                   ✕
                 </button>
               </div>
             )}
             
-            <div className="flex items-center space-x-3 bg-black/30 px-4 py-2 rounded-full">
-              <div className={`w-4 h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-              <span className="text-white font-medium">
+            <div className="flex items-center space-x-2 md:space-x-3 bg-black/30 px-2 md:px-4 py-1.5 md:py-2 rounded-full flex-shrink-0">
+              <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="text-white font-medium text-xs md:text-base whitespace-nowrap">
                 {isConnected ? 'LIVE' : 'OFFLINE'}
               </span>
         </div>
             <Button 
               variant="outline" 
               onClick={handleLogout} 
-              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30"
+              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Exit Studio
+              <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+              <span className="hidden sm:inline">Exit Studio</span>
+              <span className="sm:hidden">Exit</span>
           </Button>
           </div>
         </div>
@@ -597,15 +616,27 @@ export default function GameMasterPage() {
             )}
 
             <div className="grid grid-cols-1 gap-4">
-              <Button
-                variant="orange"
-                onClick={startGame}
-                disabled={!isConnected || gameSession?.status === 'active'}
-                className="w-full h-16 text-lg font-bold bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-lg"
-              >
-                <Play className="w-6 h-6 mr-3" />
-                🚀 START GAME
-              </Button>
+              {gameSession && gameSession.status === 'active' ? (
+                <Button
+                  variant="orange"
+                  onClick={nextQuestion}
+                  disabled={!isConnected || isLoadingQuestion}
+                  className="w-full h-16 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg"
+                >
+                  <ArrowRight className="w-6 h-6 mr-3" />
+                  {isLoadingQuestion ? '⏳ LOADING...' : '➡️ NEXT QUESTION'}
+                </Button>
+              ) : (
+                <Button
+                  variant="orange"
+                  onClick={startGame}
+                  disabled={!isConnected}
+                  className="w-full h-16 text-lg font-bold bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 shadow-lg"
+                >
+                  <Play className="w-6 h-6 mr-3" />
+                  🚀 START GAME
+                </Button>
+              )}
             </div>
             <Button
               variant="teal-blue"
@@ -618,8 +649,12 @@ export default function GameMasterPage() {
             </Button>
             <Button
               variant="dark-red"
-              onClick={endGame}
-              disabled={!isConnected || !gameSession}
+              onClick={() => {
+                if (confirm('Are you sure you want to end the game? This will finalize all scores and end the current session.')) {
+                  endGame();
+                }
+              }}
+              disabled={!isConnected || !gameSession || gameSession?.status !== 'active'}
               className="w-full h-16 text-lg font-bold bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 shadow-lg"
             >
               <Square className="w-6 h-6 mr-3" />
@@ -664,18 +699,18 @@ export default function GameMasterPage() {
                   {currentQuestion.options && currentQuestion.options.map((option, index) => (
                       <div 
                         key={index}
-                      className={`p-4 rounded-xl border-2 transition-all duration-300 relative ${
+                      className={`p-4 rounded-xl border-2 transition-all duration-300 relative flex items-start ${
                         index === (currentQuestion.correctAnswer || -1)
                           ? 'border-green-400 bg-green-500/30 text-green-100 shadow-lg shadow-green-500/50' 
                           : 'border-orange-400/50 bg-orange-500/10 text-orange-200'
                       }`}
                     >
-                      <span className={`font-bold text-2xl mr-3 ${
+                      <span className={`font-bold text-2xl mr-3 flex-shrink-0 ${
                         index === (currentQuestion.correctAnswer || -1) ? 'text-green-300' : 'text-orange-400'
                       }`}>
                         {String.fromCharCode(65 + index)}
                       </span>
-                      <span className="text-lg font-medium">{option}</span>
+                      <span className="text-lg font-medium break-words whitespace-normal flex-1">{option}</span>
                       {index === (currentQuestion.correctAnswer || -1) && (
                         <span className="absolute top-2 right-2 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold animate-pulse">
                           ✓ CORRECT

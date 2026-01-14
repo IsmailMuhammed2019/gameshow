@@ -355,6 +355,10 @@ let GameGateway = class GameGateway {
                 return { success: false, error: 'Question not found' };
             }
             const answers = await this.gameService.getAnswersForQuestion(data.questionId, data.gameSessionId);
+            if (answers.length === 0) {
+                client.emit('error', { message: 'No answers have been submitted for this question yet' });
+                return { success: false, error: 'No answers submitted' };
+            }
             this.stopQuestionTimer();
             const correctAnswers = answers.filter(answer => answer.isCorrect);
             for (const answer of correctAnswers) {
@@ -372,6 +376,7 @@ let GameGateway = class GameGateway {
                     role: answer.user?.role,
                 })),
             });
+            await this.broadcastUserList();
             const correctParticipantAnswers = answers
                 .filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT')
                 .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -400,7 +405,6 @@ let GameGateway = class GameGateway {
                     questionId: data.questionId,
                 });
             }
-            this.broadcastUserList();
             return { success: true };
         }
         catch (error) {
@@ -428,7 +432,8 @@ let GameGateway = class GameGateway {
                 client.emit('error', { message: 'Question not found' });
                 return { success: false, error: 'Question not found' };
             }
-            await this.gameService.getGameSession(data.gameSessionId);
+            const gameSession = await this.gameService.getGameSession(data.gameSessionId);
+            await this.gameService.updateGameSessionQuestion(data.gameSessionId, data.questionId);
             this.stopQuestionTimer();
             if (data.targetRole === 'PARTICIPANT') {
                 this.server.to('role_PARTICIPANT').emit('new_question', {

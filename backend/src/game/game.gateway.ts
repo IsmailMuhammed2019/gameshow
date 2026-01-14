@@ -509,6 +509,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Get all answers for this question
       const answers = await this.gameService.getAnswersForQuestion(data.questionId, data.gameSessionId);
 
+      // Check if there are any answers before proceeding
+      if (answers.length === 0) {
+        client.emit('error', { message: 'No answers have been submitted for this question yet' });
+        return { success: false, error: 'No answers submitted' };
+      }
+
       // Stop the timer when answers are revealed
       this.stopQuestionTimer();
       
@@ -531,6 +537,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           role: answer.user?.role,
         })),
       });
+
+      // Immediately broadcast updated user list with new scores
+      await this.broadcastUserList();
 
       // Announce FIRST winners for both PARTICIPANTS and AUDIENCE
       const correctParticipantAnswers = answers
@@ -566,9 +575,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           questionId: data.questionId,
         });
       }
-
-      // Broadcast updated user list to refresh leaderboards with new scores
-      this.broadcastUserList();
 
       return { success: true };
     } catch (error) {
@@ -608,8 +614,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return { success: false, error: 'Question not found' };
       }
 
-      // Update game session with current question
-      await this.gameService.getGameSession(data.gameSessionId);
+      // Get the game session to update it
+      const gameSession = await this.gameService.getGameSession(data.gameSessionId);
+      
+      // Update game session with current question to track it as sent
+      // This ensures the question won't be selected again via "Next Question"
+      await this.gameService.updateGameSessionQuestion(data.gameSessionId, data.questionId);
 
       // Stop any existing timer
       this.stopQuestionTimer();

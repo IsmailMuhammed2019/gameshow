@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import api from '@/lib/api';
@@ -57,7 +57,7 @@ export default function GeneralAdminPage() {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'participant-episodes' | 'audience-episodes' | 'question-bank' | 'user-management'>('participant-episodes');
+  const [activeTab, setActiveTab] = useState<'participant-episodes' | 'audience-episodes' | 'question-bank' | 'user-management' | 'winners'>('participant-episodes');
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
   const [newQuestion, setNewQuestion] = useState({
     question: '',
@@ -553,6 +553,16 @@ export default function GeneralAdminPage() {
               }`}
             >
               👥 User Management ({users.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('winners')}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
+                activeTab === 'winners'
+                  ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              🏆 Winners & Leaders
             </button>
           </div>
         </div>
@@ -1282,6 +1292,155 @@ export default function GeneralAdminPage() {
                 ))}
               </div>
             )}
+          </>
+        )}
+
+        {/* Winners Section */}
+        {activeTab === 'winners' && (
+          <>
+            <div className="mb-6 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-xl p-6 shadow-xl">
+              <h2 className="text-3xl font-bold text-white mb-2">🏆 Winners & Leaders</h2>
+              <p className="text-yellow-100 text-lg">Top performers and game winners</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Top Participants by Score */}
+              <Card className="p-6 bg-white shadow-xl border-2 border-blue-200">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-gray-800 text-center">
+                    🎯 Top Participants
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 text-center">
+                    Highest scoring participants
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {users.filter(u => u.role === 'PARTICIPANT').length > 0 ? (
+                    <div className="space-y-3">
+                      {users
+                        .filter(u => u.role === 'PARTICIPANT')
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, 10)
+                        .map((user, index) => (
+                          <div key={user.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-300 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${
+                                index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-blue-500'
+                              }`}>
+                                {index + 1}
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-800">{user.username}</p>
+                                <p className="text-sm text-blue-600">#{user.uniqueNumber}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-blue-700 text-lg">{user.score}</p>
+                              <p className="text-xs text-gray-500">points</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <p>No participants yet</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Top Audience by Score */}
+              <Card className="p-6 bg-white shadow-xl border-2 border-teal-200">
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold text-gray-800 text-center">
+                    👥 Top Audience
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 text-center">
+                    Highest scoring audience members
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {users.filter(u => u.role === 'AUDIENCE').length > 0 ? (
+                    <div className="space-y-3">
+                      {users
+                        .filter(u => u.role === 'AUDIENCE')
+                        .sort((a, b) => b.score - a.score)
+                        .slice(0, 10)
+                        .map((user, index) => (
+                          <div key={user.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-teal-50 to-teal-100 border border-teal-300 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${
+                                index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-teal-500'
+                              }`}>
+                                {index + 1}
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-800">{user.username}</p>
+                                <p className="text-sm text-teal-600">#{user.uniqueNumber}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-teal-700 text-lg">{user.score}</p>
+                              <p className="text-xs text-gray-500">points</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <p>No audience members yet</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Overall Top 10 */}
+            <Card className="p-6 bg-white shadow-xl border-2 border-yellow-200">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-gray-800 text-center">
+                  🏆 Overall Top 10
+                </CardTitle>
+                <CardDescription className="text-gray-600 text-center">
+                  Top performers across all roles
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {users.filter(u => u.role !== 'GENERAL_ADMIN' && u.role !== 'GAME_MASTER').length > 0 ? (
+                  <div className="space-y-3">
+                    {users
+                      .filter(u => u.role !== 'GENERAL_ADMIN' && u.role !== 'GAME_MASTER')
+                      .sort((a, b) => b.score - a.score)
+                      .slice(0, 10)
+                      .map((user, index) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-lg ${
+                              index === 0 ? 'bg-yellow-500 shadow-lg' : index === 1 ? 'bg-gray-400 shadow-lg' : index === 2 ? 'bg-orange-500 shadow-lg' : 'bg-yellow-400'
+                            }`}>
+                              {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800 text-lg">{user.username}</p>
+                              <p className="text-sm text-gray-600">
+                                #{user.uniqueNumber} • {user.role === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-yellow-700 text-xl">{user.score}</p>
+                            <p className="text-xs text-gray-500">points</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-500">
+                    <p>No players yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </>
         )}
 

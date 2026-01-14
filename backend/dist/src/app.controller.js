@@ -12,9 +12,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
 const app_service_1 = require("./app.service");
+const prisma_service_1 = require("./prisma/prisma.service");
 let AppController = class AppController {
-    constructor(appService) {
+    constructor(appService, prisma) {
         this.appService = appService;
+        this.prisma = prisma;
     }
     getHello() {
         return this.appService.getHello();
@@ -31,14 +33,15 @@ let AppController = class AppController {
     }
     async getReadiness() {
         try {
-            const prisma = new (await Promise.resolve().then(() => require('@prisma/client'))).PrismaClient();
-            await prisma.$queryRaw `SELECT 1`;
-            await prisma.$disconnect();
+            const isConnected = await this.prisma.isDatabaseConnected();
+            if (!isConnected) {
+                await this.prisma.connectWithRetry();
+            }
             return {
                 status: 'ready',
                 timestamp: new Date().toISOString(),
                 checks: {
-                    database: 'ok',
+                    database: isConnected ? 'ok' : 'reconnecting',
                     api: 'ok',
                 },
             };
@@ -51,7 +54,7 @@ let AppController = class AppController {
                     database: 'error',
                     api: 'ok',
                 },
-                error: error.message,
+                error: error instanceof Error ? error.message : 'Unknown error',
             };
         }
     }
@@ -89,6 +92,7 @@ __decorate([
 ], AppController.prototype, "getLiveness", null);
 exports.AppController = AppController = __decorate([
     (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [app_service_1.AppService])
+    __metadata("design:paramtypes", [app_service_1.AppService,
+        prisma_service_1.PrismaService])
 ], AppController);
 //# sourceMappingURL=app.controller.js.map

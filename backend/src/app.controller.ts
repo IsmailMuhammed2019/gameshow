@@ -1,9 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
+import { PrismaService } from './prisma/prisma.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get()
   getHello(): string {
@@ -26,16 +30,19 @@ export class AppController {
   async getReadiness() {
     // Check if the application is ready to handle requests
     try {
-      // Test database connection
-      const prisma = new (await import('@prisma/client')).PrismaClient();
-      await prisma.$queryRaw`SELECT 1`;
-      await prisma.$disconnect();
+      // Test database connection using PrismaService
+      const isConnected = await this.prisma.isDatabaseConnected();
+      
+      if (!isConnected) {
+        // Try to reconnect
+        await this.prisma.connectWithRetry();
+      }
       
       return {
         status: 'ready',
         timestamp: new Date().toISOString(),
         checks: {
-          database: 'ok',
+          database: isConnected ? 'ok' : 'reconnecting',
           api: 'ok',
         },
       };
@@ -47,7 +54,7 @@ export class AppController {
           database: 'error',
           api: 'ok',
         },
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }

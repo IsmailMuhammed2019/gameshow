@@ -46,4 +46,26 @@ export class UserController {
     }
     return this.userService.resetPassword(id, body.newPassword);
   }
+
+  @Patch('me/switch-role')
+  @UseGuards(JwtAuthGuard)
+  switchRole(@Request() req, @Body() body: { newRole: string }) {
+    // Only allow PARTICIPANT and AUDIENCE to switch roles
+    const currentRole = req.user.role;
+    const allowedRoles = ['PARTICIPANT', 'AUDIENCE'];
+    
+    if (!allowedRoles.includes(currentRole)) {
+      throw new Error('Unauthorized: Only participants and audience members can switch roles');
+    }
+    
+    if (!allowedRoles.includes(body.newRole)) {
+      throw new Error('Invalid role: Can only switch between PARTICIPANT and AUDIENCE');
+    }
+    
+    if (currentRole === body.newRole) {
+      throw new Error('You are already in this role');
+    }
+    
+    return this.userService.update(req.user.userId, { role: body.newRole as any });
+  }
 }

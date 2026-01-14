@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Medal, Award, Crown } from 'lucide-react';
 import { User } from '@/types';
@@ -23,6 +23,8 @@ export default function Leaderboard({
   role = 'PARTICIPANT',
 }: LeaderboardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [animatedScores, setAnimatedScores] = useState<Record<string, number>>({});
+  const prevScoresRef = useRef<Record<string, number>>({});
   
   // Filter by role if specified
   const filteredParticipants = role 
@@ -43,6 +45,37 @@ export default function Leaderboard({
       return a.username.localeCompare(b.username);
     })
     .slice(0, isExpanded ? filteredParticipants.length : showTop);
+
+  // Animate score changes
+  useEffect(() => {
+    const newAnimatedScores: Record<string, number> = {};
+    filteredParticipants.forEach((participant) => {
+      const prevScore = prevScoresRef.current[participant.id] || participant.score;
+      const currentScore = participant.score;
+      
+      if (prevScore !== currentScore) {
+        newAnimatedScores[participant.id] = currentScore;
+        // Trigger animation
+        setTimeout(() => {
+          setAnimatedScores((prev) => {
+            const updated = { ...prev };
+            delete updated[participant.id];
+            return updated;
+          });
+        }, 1000);
+      }
+    });
+    
+    if (Object.keys(newAnimatedScores).length > 0) {
+      setAnimatedScores(newAnimatedScores);
+    }
+    
+    // Update previous scores
+    prevScoresRef.current = filteredParticipants.reduce((acc, p) => {
+      acc[p.id] = p.score;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [filteredParticipants]);
 
   const getRankIcon = (index: number) => {
     switch (index) {
@@ -102,11 +135,13 @@ export default function Leaderboard({
             sortedParticipants.map((participant, index) => (
               <div
                 key={participant.id}
-                className={`flex items-center justify-between p-3 rounded-lg transition-all duration-200 ${
+                className={`flex items-center justify-between p-3 rounded-lg transition-all duration-300 ${
                   participant.id === currentUserId 
-                    ? 'ring-2 ring-gold-400 bg-gold-500/20' 
-                    : 'hover:bg-white/10'
-                } ${getRankColor(index)}`}
+                    ? 'ring-2 ring-gold-400 bg-gold-500/20 shadow-lg' 
+                    : 'hover:bg-white/10 hover:scale-105'
+                } ${getRankColor(index)} ${
+                  animatedScores[participant.id] ? 'animate-pulse border-2 border-yellow-400' : ''
+                }`}
               >
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
@@ -130,9 +165,14 @@ export default function Leaderboard({
                 </div>
                 <div className="flex items-center space-x-2">
                   <Trophy className="w-4 h-4" />
-                  <span className="font-bold text-lg">
+                  <span className={`font-bold text-lg transition-all duration-500 ${
+                    animatedScores[participant.id] ? 'scale-125 text-yellow-400 animate-pulse' : ''
+                  }`}>
                     {participant.score}
                   </span>
+                  {animatedScores[participant.id] && (
+                    <span className="text-green-400 font-bold animate-bounce">+1</span>
+                  )}
                 </div>
               </div>
             ))

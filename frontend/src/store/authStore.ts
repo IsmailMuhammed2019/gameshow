@@ -9,6 +9,7 @@ interface AuthStore extends AuthState {
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
+  switchRole: (newRole: 'PARTICIPANT' | 'AUDIENCE') => Promise<void>;
   isInitialized: boolean;
   initialize: () => void;
 }
@@ -79,6 +80,44 @@ export const useAuthStore = create<AuthStore>()(
 
       setToken: (token: string) => {
         set({ token });
+      },
+
+      switchRole: async (newRole: 'PARTICIPANT' | 'AUDIENCE') => {
+        set({ isLoading: true });
+        try {
+          const response = await api.patch('/users/me/switch-role', { newRole });
+          const updatedUser = response.data;
+          
+          set({
+            user: {
+              ...updatedUser,
+              score: Number(updatedUser.score), // Ensure score is a number
+            },
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          
+          // Update localStorage
+          localStorage.setItem('user', JSON.stringify({
+            ...updatedUser,
+            score: Number(updatedUser.score),
+          }));
+          
+          // Update persisted state
+          const authStorage = localStorage.getItem('auth-storage');
+          if (authStorage) {
+            const parsed = JSON.parse(authStorage);
+            parsed.state.user = {
+              ...updatedUser,
+              score: Number(updatedUser.score),
+            };
+            parsed.state.isAuthenticated = true;
+            localStorage.setItem('auth-storage', JSON.stringify(parsed));
+          }
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
       },
 
       initialize: () => {

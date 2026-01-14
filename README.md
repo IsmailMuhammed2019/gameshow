@@ -1,6 +1,6 @@
 # Millionaire Game App
 
-A modern "Who Wants to Be a Millionaire" game application built with Next.js frontend and NestJS backend, featuring real-time multiplayer functionality and PWA capabilities.
+t
 
 ## Features
 
@@ -123,6 +123,8 @@ Works on: Phones, tablets, laptops, desktops - any device with a browser!
    # For production
    docker-compose up --build
    ```
+
+   **Data persistence:** PostgreSQL data is stored in `data/postgres` (production) or `data/postgres-dev` (development). Back up this directory regularly or use the provided `backup-database.sh` script before upgrading or recreating containers.
 
 4. **Access the application**
    - Frontend: http://localhost:3000

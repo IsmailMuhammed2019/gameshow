@@ -87,12 +87,27 @@ let GameService = class GameService {
             console.log('Game is not active, status:', gameSession.status);
             throw new common_1.BadRequestException('Game is not active');
         }
+        const allAnswersInSession = await this.prisma.answer.findMany({
+            where: { gameSessionId },
+            select: { questionId: true },
+            distinct: ['questionId'],
+        });
+        const sentQuestionIds = new Set();
+        allAnswersInSession.forEach(answer => sentQuestionIds.add(answer.questionId));
+        if (gameSession.currentQuestionId) {
+            sentQuestionIds.add(gameSession.currentQuestionId);
+        }
+        const allSentQuestionIds = Array.from(sentQuestionIds);
+        console.log(`Total sent question IDs in this session: ${allSentQuestionIds.length}`, allSentQuestionIds);
         let questions;
         if (gameSession.episodeId) {
             console.log('Getting questions from episode:', gameSession.episodeId);
             const whereClause = {
                 episodeId: gameSession.episodeId,
-                isActive: true
+                isActive: true,
+                id: {
+                    notIn: allSentQuestionIds.length > 0 ? allSentQuestionIds : [],
+                },
             };
             if (targetRole) {
                 whereClause.targetRole = targetRole;
@@ -100,22 +115,25 @@ let GameService = class GameService {
             questions = await this.prisma.question.findMany({ where: whereClause });
         }
         else {
-            questions = await this.getActiveQuestions(targetRole);
+            const whereClause = {
+                isActive: true,
+                id: {
+                    notIn: allSentQuestionIds.length > 0 ? allSentQuestionIds : [],
+                },
+            };
+            if (targetRole) {
+                whereClause.targetRole = targetRole;
+            }
+            questions = await this.prisma.question.findMany({ where: whereClause });
         }
-        console.log(`Found ${questions.length} questions for role: ${targetRole || 'PARTICIPANT'}`);
+        console.log(`Found ${questions.length} unsent questions for role: ${targetRole || 'PARTICIPANT'}`);
         if (questions.length === 0) {
-            console.log(`No active questions available for role: ${targetRole || 'PARTICIPANT'}`);
-            throw new common_1.BadRequestException(`No active questions available for role: ${targetRole || 'PARTICIPANT'}`);
+            console.log(`No unsent questions available for role: ${targetRole || 'PARTICIPANT'}`);
+            throw new common_1.BadRequestException(`No unsent questions available for role: ${targetRole || 'PARTICIPANT'}. All questions have been sent in this session.`);
         }
         const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
         console.log('Selected random question:', randomQuestion.id, randomQuestion.question);
-        await this.prisma.gameSession.update({
-            where: { id: gameSessionId },
-            data: {
-                currentQuestionId: randomQuestion.id,
-                currentQuestionIndex: gameSession.currentQuestionIndex + 1,
-            },
-        });
+        await this.updateGameSessionQuestion(gameSessionId, randomQuestion.id);
         return randomQuestion;
     }
     async submitAnswer(userId, questionId, gameSessionId, selectedOption, responseTime) {
@@ -235,6 +253,45 @@ let GameService = class GameService {
             } : null,
         };
         return result;
+    }
+    async updateGameSessionQuestion(gameSessionId, questionId) {
+        const gameSession = await this.prisma.gameSession.findUnique({
+            where: { id: gameSessionId },
+        });
+        if (!gameSession) {
+            throw new common_1.NotFoundException('Game session not found');
+        }
+        const existingAnswer = await this.prisma.answer.findFirst({
+            where: {
+                gameSessionId,
+                questionId,
+            },
+        });
+        if (!existingAnswer) {
+            try {
+                await this.prisma.answer.create({
+                    data: {
+                        userId: gameSession.gameMasterId,
+                        questionId: questionId,
+                        gameSessionId: gameSessionId,
+                        selectedOption: -1,
+                        isCorrect: false,
+                        responseTime: 0,
+                    },
+                });
+                console.log(`Created sent marker for question ${questionId} in session ${gameSessionId}`);
+            }
+            catch (error) {
+                console.log(`Sent marker not needed - answer already exists for question ${questionId}`);
+            }
+        }
+        await this.prisma.gameSession.update({
+            where: { id: gameSessionId },
+            data: {
+                currentQuestionId: questionId,
+                currentQuestionIndex: gameSession.currentQuestionIndex + 1,
+            },
+        });
     }
     async getActiveGameSessions() {
         const gameSessions = await this.prisma.gameSession.findMany({
