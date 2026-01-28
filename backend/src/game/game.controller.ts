@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch, Delete, ForbiddenException, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { GameService } from './game.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
@@ -41,20 +41,38 @@ export class GameController {
   }
 
   @Patch('questions/:id')
-  async updateQuestion(@Param('id') id: string, @Body() updateData: { isActive?: boolean }) {
-    return this.gameService.updateQuestion(id, updateData);
+  async updateQuestion(@Param('id') id: string, @Body() updateData: { isActive?: boolean }, @Request() req) {
+    // Only general admin can update questions
+    if (req.user.role !== 'GENERAL_ADMIN') {
+      throw new ForbiddenException('Unauthorized: Only general admin can update questions');
+    }
+    
+    // Validate ID parameter
+    if (!id || id.trim() === '') {
+      throw new BadRequestException('Question ID parameter is required');
+    }
+    
+    try {
+      return await this.gameService.updateQuestion(id, updateData);
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Question with ID ${id} not found`);
+      }
+      console.error(`[PATCH] Error updating question ${id}:`, error);
+      throw new InternalServerErrorException(error.message || 'Failed to update question');
+    }
   }
 
   @Delete('questions/:id')
   async deleteQuestion(@Param('id') id: string, @Request() req) {
     // Only general admin can delete questions
     if (req.user.role !== 'GENERAL_ADMIN') {
-      throw new Error('Unauthorized: Only general admin can delete questions');
+      throw new ForbiddenException('Unauthorized: Only general admin can delete questions');
     }
     
     // Validate ID parameter
     if (!id || id.trim() === '') {
-      throw new Error('Question ID parameter is required');
+      throw new BadRequestException('Question ID parameter is required');
     }
     
     console.log(`[DELETE] Attempting to delete question with ID: ${id}`);
@@ -63,9 +81,32 @@ export class GameController {
       const result = await this.gameService.deleteQuestion(id);
       console.log(`[DELETE] Successfully deleted question with ID: ${id}`);
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[DELETE] Error deleting question ${id}:`, error);
-      throw error;
+      
+      // Handle Prisma errors
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Question with ID ${id} not found`);
+      }
+      
+      // Handle custom error messages from service
+      if (error.message) {
+        if (error.message.includes('associated answer')) {
+          throw new BadRequestException(error.message);
+        }
+        if (error.message.includes('currently being used')) {
+          throw new BadRequestException(error.message);
+        }
+        if (error.message.includes('not found')) {
+          throw new NotFoundException(error.message);
+        }
+        if (error.message.includes('required')) {
+          throw new BadRequestException(error.message);
+        }
+      }
+      
+      // Generic error fallback
+      throw new InternalServerErrorException(error.message || 'Failed to delete question');
     }
   }
 

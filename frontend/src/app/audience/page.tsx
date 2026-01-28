@@ -189,17 +189,13 @@ export default function AudiencePage() {
           submitted: true,
         });
         
-        // Update user score if answer is correct
+        // Don't update score here - wait for user_list_updated event
+        // which will have the correct score from backend (2 points for first, 1 for others)
+        // Just trigger animation if answer is correct
         if (userAnswer.isCorrect && user) {
-          const newScore = (user.score || 0) + 1;
-          setUser({
-            ...user,
-            score: newScore,
-          });
-          // Trigger score animation
+          // Trigger score animation - actual score will come from user_list_updated
           setScoreAnimation(true);
           setTimeout(() => setScoreAnimation(false), 1000);
-          prevScoreRef.current = newScore;
         }
       } else {
         // Even if user didn't answer, show the correct answer
@@ -330,25 +326,25 @@ export default function AudiencePage() {
         isReconnecting={isReconnecting}
         onRetry={handleRetryConnection}
       />
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      {/* Header - Compact on Mobile */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-6 gap-2 md:gap-4">
         <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
           <img 
             src="/logo.png" 
             alt="Logo" 
-            className="w-24 h-12 md:w-48 md:h-24 flex-shrink-0"
+            className="w-20 h-10 md:w-48 md:h-24 flex-shrink-0 hidden sm:block"
           />
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg md:text-2xl font-bold text-white flex items-center">
+            <h1 className="text-base md:text-2xl font-bold text-white flex items-center">
               <Eye className="w-4 h-4 md:w-6 md:h-6 mr-2 text-teal-400 flex-shrink-0" />
               <span className="truncate">Audience Portal</span>
             </h1>
             <p className="text-white/80 text-xs md:text-base truncate">{user.username} (#{user.uniqueNumber})</p>
           </div>
         </div>
-        <div className="flex items-center flex-wrap gap-2 w-full md:w-auto">
-          <div className="flex items-center space-x-2 bg-black/30 px-2 md:px-3 py-1.5 md:py-2 rounded-full flex-shrink-0">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+        <div className="flex items-center flex-wrap gap-1.5 md:gap-2 w-full md:w-auto">
+          <div className="flex items-center space-x-1.5 md:space-x-2 bg-black/30 px-2 md:px-3 py-1 md:py-2 rounded-full flex-shrink-0">
+            <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
             <span className="text-white text-xs md:text-sm whitespace-nowrap">
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
@@ -356,7 +352,7 @@ export default function AudiencePage() {
           <Button 
             variant="outline" 
             onClick={handleSwitchRole} 
-            className="bg-orange-600/20 border-orange-500 text-white hover:bg-orange-600/30 hover:text-white hover:border-orange-400 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
+            className="bg-orange-600/20 border-orange-500 text-white hover:bg-orange-600/30 hover:text-white hover:border-orange-400 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
             title="Switch to Participant mode"
           >
             <Gamepad2 className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
@@ -366,7 +362,7 @@ export default function AudiencePage() {
           <Button 
             variant="outline" 
             onClick={handleLogout} 
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white hover:border-white/40 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white hover:border-white/40 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
           >
             <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
             <span className="font-medium hidden sm:inline">Logout</span>
@@ -375,9 +371,9 @@ export default function AudiencePage() {
         </div> 
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Sidebar - Stats */}
-        <div className="lg:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* Left Sidebar - Stats - Hidden on mobile, shown on desktop */}
+        <div className="lg:col-span-1 space-y-4 md:space-y-6 hidden lg:block">
           {/* Your Score */}
           <Card className="score-display bg-gradient-to-br from-teal-500 to-blue-600 border-2 border-teal-300">
             <CardHeader className="text-center">
@@ -472,15 +468,35 @@ export default function AudiencePage() {
           </Card>
         </div>
 
-        {/* Center - Current Question */}
-        <div className="lg:col-span-2">
+        {/* Center - Current Question - Full width on mobile, 2 cols on desktop */}
+        <div className="lg:col-span-2 col-span-1">
+          {/* Mobile Score Display - Visible on mobile only */}
+          <Card className="lg:hidden mb-4 bg-gradient-to-br from-teal-500 to-blue-600 border-2 border-teal-300">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white/80 text-xs mb-1">Your Score</p>
+                  <p className={`text-3xl font-bold text-white transition-all duration-500 ${
+                    scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
+                  }`}>
+                    {user.score || 0}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-white/80 text-xs mb-1">ID</p>
+                  <p className="text-xl font-bold text-yellow-300">#{user.uniqueNumber}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
           <Card className="question-display">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-white mb-2">
+              <CardTitle className="text-xl md:text-2xl font-bold text-white mb-2">
                 📺 YOUR QUESTION
               </CardTitle>
               {gameSession && (
-                <CardDescription className="text-orange-300">
+                <CardDescription className="text-orange-300 text-sm md:text-base">
                   Question {gameSession.currentQuestionIndex} • Difficulty: {currentQuestion?.difficulty || 'N/A'}
                 </CardDescription>
               )}
@@ -605,8 +621,8 @@ export default function AudiencePage() {
           </Card>
         </div>
 
-        {/* Right Sidebar - Leaderboard */}
-        <div className="lg:col-span-1">
+        {/* Right Sidebar - Leaderboard - Hidden on mobile, shown on desktop */}
+        <div className="lg:col-span-1 hidden lg:block">
           {(() => {
             console.log('========== AUDIENCE LEADERBOARD DATA ==========');
             console.log('Audience count:', audience.length);

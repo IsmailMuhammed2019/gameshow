@@ -41,15 +41,30 @@ let GameController = class GameController {
         const allQuestions = await this.gameService.getAllQuestions();
         return allQuestions;
     }
-    async updateQuestion(id, updateData) {
-        return this.gameService.updateQuestion(id, updateData);
+    async updateQuestion(id, updateData, req) {
+        if (req.user.role !== 'GENERAL_ADMIN') {
+            throw new common_1.ForbiddenException('Unauthorized: Only general admin can update questions');
+        }
+        if (!id || id.trim() === '') {
+            throw new common_1.BadRequestException('Question ID parameter is required');
+        }
+        try {
+            return await this.gameService.updateQuestion(id, updateData);
+        }
+        catch (error) {
+            if (error.code === 'P2025') {
+                throw new common_1.NotFoundException(`Question with ID ${id} not found`);
+            }
+            console.error(`[PATCH] Error updating question ${id}:`, error);
+            throw new common_1.InternalServerErrorException(error.message || 'Failed to update question');
+        }
     }
     async deleteQuestion(id, req) {
         if (req.user.role !== 'GENERAL_ADMIN') {
-            throw new Error('Unauthorized: Only general admin can delete questions');
+            throw new common_1.ForbiddenException('Unauthorized: Only general admin can delete questions');
         }
         if (!id || id.trim() === '') {
-            throw new Error('Question ID parameter is required');
+            throw new common_1.BadRequestException('Question ID parameter is required');
         }
         console.log(`[DELETE] Attempting to delete question with ID: ${id}`);
         try {
@@ -59,7 +74,24 @@ let GameController = class GameController {
         }
         catch (error) {
             console.error(`[DELETE] Error deleting question ${id}:`, error);
-            throw error;
+            if (error.code === 'P2025') {
+                throw new common_1.NotFoundException(`Question with ID ${id} not found`);
+            }
+            if (error.message) {
+                if (error.message.includes('associated answer')) {
+                    throw new common_1.BadRequestException(error.message);
+                }
+                if (error.message.includes('currently being used')) {
+                    throw new common_1.BadRequestException(error.message);
+                }
+                if (error.message.includes('not found')) {
+                    throw new common_1.NotFoundException(error.message);
+                }
+                if (error.message.includes('required')) {
+                    throw new common_1.BadRequestException(error.message);
+                }
+            }
+            throw new common_1.InternalServerErrorException(error.message || 'Failed to delete question');
         }
     }
     startGame(req, body = {}) {
@@ -126,8 +158,9 @@ __decorate([
     (0, common_1.Patch)('questions/:id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "updateQuestion", null);
 __decorate([

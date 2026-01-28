@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
@@ -440,16 +440,29 @@ export class GameService {
   }
 
   async updateQuestion(questionId: string, updateData: { isActive?: boolean }) {
-    return this.prisma.question.update({
-      where: { id: questionId },
-      data: updateData,
-    });
+    // Validate that the question ID is provided and not empty
+    if (!questionId || questionId.trim() === '') {
+      throw new BadRequestException('Question ID is required');
+    }
+    
+    try {
+      return await this.prisma.question.update({
+        where: { id: questionId },
+        data: updateData,
+      });
+    } catch (error: any) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Question with ID ${questionId} not found`);
+      }
+      console.error(`[UPDATE] Error updating question ${questionId}:`, error);
+      throw new InternalServerErrorException(error.message || 'Failed to update question');
+    }
   }
 
   async deleteQuestion(questionId: string) {
     // Validate that the question ID is provided and not empty
     if (!questionId || questionId.trim() === '') {
-      throw new Error('Question ID is required');
+      throw new BadRequestException('Question ID is required');
     }
 
     // First check if the question exists
@@ -458,7 +471,7 @@ export class GameService {
     });
 
     if (!question) {
-      throw new Error(`Question with ID ${questionId} not found`);
+      throw new NotFoundException(`Question with ID ${questionId} not found`);
     }
 
     // Check if question has associated answers (would cause RESTRICT constraint error)
@@ -467,7 +480,7 @@ export class GameService {
     });
 
     if (answerCount > 0) {
-      throw new Error(
+      throw new BadRequestException(
         `Cannot delete question: it has ${answerCount} associated answer(s). Please remove answers first or contact support.`
       );
     }
@@ -478,36 +491,47 @@ export class GameService {
     });
 
     if (activeSessionCount > 0) {
-      throw new Error(
+      throw new BadRequestException(
         `Cannot delete question: it is currently being used in ${activeSessionCount} active game session(s).`
       );
     }
 
     // Delete the question using a transaction to ensure atomicity
     // and verify only one question is deleted
-    const deletedQuestion = await this.prisma.$transaction(async (tx) => {
-      // Double-check the question still exists (concurrency protection)
-      const questionToDelete = await tx.question.findUnique({
-        where: { id: questionId },
+    try {
+      const deletedQuestion = await this.prisma.$transaction(async (tx) => {
+        // Double-check the question still exists (concurrency protection)
+        const questionToDelete = await tx.question.findUnique({
+          where: { id: questionId },
+        });
+
+        if (!questionToDelete) {
+          throw new NotFoundException(`Question with ID ${questionId} no longer exists`);
+        }
+
+        // Delete the specific question
+        const deleted = await tx.question.delete({
+          where: { id: questionId },
+        });
+
+        // Verify only one question was deleted by counting remaining questions
+        // (This is a safety check, Prisma should already ensure this)
+        console.log(`[DELETE] Deleted question: ${deleted.id} - "${deleted.question.substring(0, 50)}..."`);
+
+        return deleted;
       });
 
-      if (!questionToDelete) {
-        throw new Error(`Question with ID ${questionId} no longer exists`);
+      return deletedQuestion;
+    } catch (error: any) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
       }
-
-      // Delete the specific question
-      const deleted = await tx.question.delete({
-        where: { id: questionId },
-      });
-
-      // Verify only one question was deleted by counting remaining questions
-      // (This is a safety check, Prisma should already ensure this)
-      console.log(`[DELETE] Deleted question: ${deleted.id} - "${deleted.question.substring(0, 50)}..."`);
-
-      return deleted;
-    });
-
-    return deletedQuestion;
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Question with ID ${questionId} not found`);
+      }
+      console.error(`[DELETE] Error deleting question ${questionId}:`, error);
+      throw new InternalServerErrorException(error.message || 'Failed to delete question');
+    }
   }
 
   async getQuestionById(questionId: string) {

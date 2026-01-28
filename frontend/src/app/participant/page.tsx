@@ -162,17 +162,13 @@ export default function ParticipantPage() {
           submitted: true,
         });
         
-        // Update user score if answer is correct
+        // Don't update score here - wait for user_list_updated event
+        // which will have the correct score from backend (2 points for first, 1 for others)
+        // Just trigger animation if answer is correct
         if (userAnswer.isCorrect && user) {
-          const newScore = (user.score || 0) + 1;
-          setUser({
-            ...user,
-            score: newScore,
-          });
-          // Trigger score animation
+          // Trigger score animation - actual score will come from user_list_updated
           setScoreAnimation(true);
           setTimeout(() => setScoreAnimation(false), 1000);
-          prevScoreRef.current = newScore;
         }
         
         // Trigger celebration animation AFTER a delay to show the answer first
@@ -335,11 +331,11 @@ export default function ParticipantPage() {
         isReconnecting={isReconnecting}
         onRetry={handleRetryConnection}
       />
-      {/* TV Show Header */}
-      <div className="game-show-header p-4 md:p-6 mb-8 rounded-b-3xl">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center space-x-3 md:space-x-6 flex-1 min-w-0">
-            <div className="relative flex-shrink-0">
+      {/* TV Show Header - Compact on Mobile */}
+      <div className="game-show-header p-2 md:p-6 mb-4 md:mb-8 rounded-b-3xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
+          <div className="flex items-center space-x-2 md:space-x-6 flex-1 min-w-0">
+            <div className="relative flex-shrink-0 hidden sm:block">
               <img 
                 src="/logo.png" 
                 alt="Logo" 
@@ -348,17 +344,17 @@ export default function ParticipantPage() {
               <div className="absolute -top-1 -right-1 w-4 h-4 md:w-6 md:h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl md:text-4xl font-bold text-white mb-1 md:mb-2 drop-shadow-lg truncate">
+              <h1 className="text-lg md:text-4xl font-bold text-white mb-0.5 md:mb-2 drop-shadow-lg truncate">
                 🎮 PLAYER STATION
               </h1>
-              <p className="text-sm md:text-xl text-orange-300 font-medium truncate">
+              <p className="text-xs md:text-xl text-orange-300 font-medium truncate">
                 {user.username} • #{user.uniqueNumber}
               </p>
             </div>
           </div>
-          <div className="flex items-center flex-wrap gap-2 md:gap-4 w-full md:w-auto">
-            <div className="flex items-center space-x-2 md:space-x-3 bg-black/30 px-2 md:px-4 py-1.5 md:py-2 rounded-full flex-shrink-0">
-              <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <div className="flex items-center flex-wrap gap-1.5 md:gap-4 w-full md:w-auto">
+            <div className="flex items-center space-x-1.5 md:space-x-3 bg-black/30 px-2 md:px-4 py-1 md:py-2 rounded-full flex-shrink-0">
+              <div className={`w-2.5 h-2.5 md:w-4 md:h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
               <span className="text-white font-medium text-xs md:text-base whitespace-nowrap">
                 {isConnected ? 'LIVE' : 'OFFLINE'}
               </span>
@@ -366,7 +362,7 @@ export default function ParticipantPage() {
             <Button 
               variant="outline" 
               onClick={handleSwitchRole} 
-              className="bg-teal-600/20 border-teal-500 text-white hover:bg-teal-600/30 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
+              className="bg-teal-600/20 border-teal-500 text-white hover:bg-teal-600/30 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
               title="Switch to Audience mode"
             >
               <UsersRound className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
@@ -376,7 +372,7 @@ export default function ParticipantPage() {
             <Button 
               variant="outline" 
               onClick={handleLogout} 
-              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
+              className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
             >
               <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
               <span className="hidden sm:inline">Exit Game</span>
@@ -386,9 +382,9 @@ export default function ParticipantPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Left Sidebar - Player Stats & Recent Winners */}
-        <div className="lg:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* Left Sidebar - Player Stats & Recent Winners - Hidden on mobile, shown on desktop */}
+        <div className="lg:col-span-1 space-y-4 md:space-y-6 hidden lg:block">
           {/* Your Score */}
           <Card className="score-display">
             <CardHeader className="text-center">
@@ -498,8 +494,8 @@ export default function ParticipantPage() {
           </Card>
         </div>
 
-        {/* Center - Current Question */}
-        <div className="lg:col-span-2">
+        {/* Center - Current Question - Full width on mobile, 2 cols on desktop */}
+        <div className="lg:col-span-2 col-span-1">
           <Card className="question-display">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold text-white mb-2">
@@ -644,8 +640,8 @@ export default function ParticipantPage() {
           </Card>
         </div>
 
-        {/* Right Sidebar - Leaderboard */}
-        <div className="lg:col-span-1">
+        {/* Right Sidebar - Leaderboard - Hidden on mobile, shown on desktop */}
+        <div className="lg:col-span-1 hidden lg:block">
           {(() => {
             console.log('Rendering leaderboard - Participants:', participants.length);
             console.log('Rendering leaderboard - Audience:', audience.length);

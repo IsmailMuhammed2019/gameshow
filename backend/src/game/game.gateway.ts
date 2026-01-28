@@ -519,9 +519,30 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.stopQuestionTimer();
       
       // Update scores for correct answers NOW that the game master has revealed them
+      // First correct answer gets 2 points, others get 1 point
       const correctAnswers = answers.filter(answer => answer.isCorrect);
+      
+      // Sort by creation time to find first correct answers for each role
+      const sortedCorrectAnswers = correctAnswers.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      
+      // Track first correct answer for each role
+      const firstParticipantWinner = sortedCorrectAnswers.find(a => a.user?.role === 'PARTICIPANT');
+      const firstAudienceWinner = sortedCorrectAnswers.find(a => a.user?.role === 'AUDIENCE');
+      
+      // Update scores: first correct answer gets 2 points, others get 1 point
       for (const answer of correctAnswers) {
-        await this.gameService.updateUserScore(answer.userId, 1);
+        let points = 1; // Default: 1 point for correct answer
+        
+        // Check if this is the first correct answer for their role
+        if (answer.user?.role === 'PARTICIPANT' && firstParticipantWinner && answer.id === firstParticipantWinner.id) {
+          points = 2; // First participant gets 2 points
+        } else if (answer.user?.role === 'AUDIENCE' && firstAudienceWinner && answer.id === firstAudienceWinner.id) {
+          points = 2; // First audience gets 2 points
+        }
+        
+        await this.gameService.updateUserScore(answer.userId, points);
       }
 
       // Broadcast the correct answer and results to all users

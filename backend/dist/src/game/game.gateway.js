@@ -361,8 +361,18 @@ let GameGateway = class GameGateway {
             }
             this.stopQuestionTimer();
             const correctAnswers = answers.filter(answer => answer.isCorrect);
+            const sortedCorrectAnswers = correctAnswers.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            const firstParticipantWinner = sortedCorrectAnswers.find(a => a.user?.role === 'PARTICIPANT');
+            const firstAudienceWinner = sortedCorrectAnswers.find(a => a.user?.role === 'AUDIENCE');
             for (const answer of correctAnswers) {
-                await this.gameService.updateUserScore(answer.userId, 1);
+                let points = 1;
+                if (answer.user?.role === 'PARTICIPANT' && firstParticipantWinner && answer.id === firstParticipantWinner.id) {
+                    points = 2;
+                }
+                else if (answer.user?.role === 'AUDIENCE' && firstAudienceWinner && answer.id === firstAudienceWinner.id) {
+                    points = 2;
+                }
+                await this.gameService.updateUserScore(answer.userId, points);
             }
             this.server.emit('answer_revealed', {
                 questionId: data.questionId,
