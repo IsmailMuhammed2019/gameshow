@@ -84,6 +84,7 @@ export declare class GameController {
     }[]>;
     updateQuestion(id: string, updateData: {
         isActive?: boolean;
+        episodeId?: string | null;
     }, req: any): Promise<{
         id: string;
         isActive: boolean;

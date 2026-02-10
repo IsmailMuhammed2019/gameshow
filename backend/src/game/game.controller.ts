@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('game')
 @UseGuards(JwtAuthGuard)
 export class GameController {
-  constructor(private readonly gameService: GameService) {}
+  constructor(private readonly gameService: GameService) { }
 
   @Post('questions')
   createQuestion(@Body() createQuestionDto: CreateQuestionDto) {
@@ -40,18 +40,17 @@ export class GameController {
     return allQuestions;
   }
 
-  @Patch('questions/:id')
-  async updateQuestion(@Param('id') id: string, @Body() updateData: { isActive?: boolean }, @Request() req) {
+  async updateQuestion(@Param('id') id: string, @Body() updateData: { isActive?: boolean; episodeId?: string | null }, @Request() req) {
     // Only general admin can update questions
     if (req.user.role !== 'GENERAL_ADMIN') {
       throw new ForbiddenException('Unauthorized: Only general admin can update questions');
     }
-    
+
     // Validate ID parameter
     if (!id || id.trim() === '') {
       throw new BadRequestException('Question ID parameter is required');
     }
-    
+
     try {
       return await this.gameService.updateQuestion(id, updateData);
     } catch (error: any) {
@@ -69,26 +68,26 @@ export class GameController {
     if (req.user.role !== 'GENERAL_ADMIN') {
       throw new ForbiddenException('Unauthorized: Only general admin can delete questions');
     }
-    
+
     // Validate ID parameter
     if (!id || id.trim() === '') {
       throw new BadRequestException('Question ID parameter is required');
     }
-    
+
     console.log(`[DELETE] Attempting to delete question with ID: ${id}`);
-    
+
     try {
       const result = await this.gameService.deleteQuestion(id);
       console.log(`[DELETE] Successfully deleted question with ID: ${id}`);
       return result;
     } catch (error: any) {
       console.error(`[DELETE] Error deleting question ${id}:`, error);
-      
+
       // Handle Prisma errors
       if (error.code === 'P2025') {
         throw new NotFoundException(`Question with ID ${id} not found`);
       }
-      
+
       // Handle custom error messages from service
       if (error.message) {
         if (error.message.includes('associated answer')) {
@@ -104,7 +103,7 @@ export class GameController {
           throw new BadRequestException(error.message);
         }
       }
-      
+
       // Generic error fallback
       throw new InternalServerErrorException(error.message || 'Failed to delete question');
     }

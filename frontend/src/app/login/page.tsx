@@ -28,12 +28,12 @@ export default function LoginPage() {
     } catch (err: any) {
       // Extract error information properly to avoid serialization issues
       let errorMessage = 'Login failed';
-      
+
       if (err.response) {
         // Axios response error
         const status = err.response.status;
         const data = err.response.data;
-        
+
         if (status === 500) {
           errorMessage = data?.message || data?.error || 'Internal server error. Please check if the backend is running and try again.';
           console.error('Login 500 error:', {
@@ -43,7 +43,7 @@ export default function LoginPage() {
             fullResponse: data,
           });
         } else if (status === 401) {
-          errorMessage = 'Invalid username or password';
+          errorMessage = 'Invalid username/email or password';
         } else {
           errorMessage = data?.message || `Server error (${status})`;
         }
@@ -58,7 +58,7 @@ export default function LoginPage() {
         errorMessage = err.message || 'Login failed';
         console.error('Login error:', err.message || err);
       }
-      
+
       setError(errorMessage);
     }
   };
@@ -75,9 +75,9 @@ export default function LoginPage() {
       <Card className="question-card w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
+            <img
+              src="/logo.png"
+              alt="Logo"
               className="w-48 h-24"
             />
           </div>
@@ -93,10 +93,10 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            
+
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                Username
+                Username or Email
               </label>
               <Input
                 id="username"
@@ -105,7 +105,7 @@ export default function LoginPage() {
                 required
                 value={formData.username}
                 onChange={handleInputChange}
-                placeholder="Enter your username"
+                placeholder="Enter your username or email"
                 className="w-full"
               />
             </div>
@@ -135,15 +135,6 @@ export default function LoginPage() {
                   ) : (
                     <Eye className="h-4 w-4 text-gray-400" />
                   )}
-                </button>
-              </div>
-              <div className="mt-2 text-right">
-                <button
-                  type="button"
-                  onClick={() => router.push('/forgot-password')}
-                  className="text-sm text-orange-600 hover:text-orange-700 font-medium"
-                >
-                  Forgot your password?
                 </button>
               </div>
             </div>
@@ -181,6 +172,6 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }

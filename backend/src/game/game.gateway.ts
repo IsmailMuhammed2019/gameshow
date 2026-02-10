@@ -15,13 +15,13 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @WebSocketGateway({
   cors: {
     origin: (origin, callback) => {
-      const allowedOrigins = process.env.ALLOWED_ORIGINS 
+      const allowedOrigins = process.env.ALLOWED_ORIGINS
         ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
         : ['http://localhost:3000'];
-      
+
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
         callback(null, true);
       } else {
@@ -81,7 +81,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         break;
       }
     }
-    
+
     // Broadcast updated user list
     this.broadcastUserList();
   }
@@ -92,7 +92,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { userId: string; role: string; gameSessionId?: string },
   ) {
     console.log('User joining game:', data);
-    
+
     this.connectedUsers.set(data.userId, {
       socket: client,
       userId: data.userId,
@@ -108,7 +108,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     client.emit('joined_game', { success: true });
-    
+
     // Broadcast updated user list to all connected users
     this.broadcastUserList();
   }
@@ -116,7 +116,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private async broadcastUserList() {
     const participants = Array.from(this.connectedUsers.values())
       .filter(user => user.role === 'PARTICIPANT');
-    
+
     const audience = Array.from(this.connectedUsers.values())
       .filter(user => user.role === 'AUDIENCE');
 
@@ -174,7 +174,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     console.log('Sending user_list_updated - Participant scores:', participantDetails.map(p => ({ username: p.username, score: p.score })));
     console.log('Sending user_list_updated - Audience scores:', audienceDetails.map(a => ({ username: a.username, score: a.score })));
-    
+
     this.server.emit('user_list_updated', {
       participants: participantDetails,
       audience: audienceDetails,
@@ -186,9 +186,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (difficulty) {
       this.questionTimeLimit = Math.round(this.getTimeLimitByDifficulty(difficulty));
     }
-    
+
     this.currentQuestionTimeLeft = this.questionTimeLimit;
-    
+
     // Only emit timer to the specific role that should see it
     if (targetRole === 'PARTICIPANT') {
       this.server.to('role_PARTICIPANT').emit('timer_started', {
@@ -213,7 +213,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.questionTimer = setInterval(() => {
       this.currentQuestionTimeLeft--;
-      
+
       // Only emit timer updates to the specific role that should see it
       if (targetRole === 'PARTICIPANT') {
         this.server.to('role_PARTICIPANT').emit('timer_update', {
@@ -235,7 +235,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       if (this.currentQuestionTimeLeft <= 0) {
         this.stopQuestionTimer();
-        
+
         // Only emit timer expired to the specific role that should see it
         if (targetRole === 'PARTICIPANT') {
           this.server.to('role_PARTICIPANT').emit('timer_expired', {
@@ -277,18 +277,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       console.log('Start game requested by:', data.gameMasterId, 'targetRole:', data.targetRole, 'episodeId:', data.episodeId);
       const gameSession = await this.gameService.startGame(data.gameMasterId, data.episodeId);
       console.log('Game session created:', gameSession);
-      
+
       // Join the game master to the game room
       client.join(`game_${gameSession.id}`);
-      
+
       // Emit to all connected users (broadcast to everyone)
       this.server.emit('game_started', gameSession);
       console.log('Game started event broadcasted');
-      
+
       // Automatically get the first question based on target role
       if (data.targetRole) {
         console.log('Getting first question for target role:', data.targetRole);
-        
+
         // Get questions based on target role
         let participantQuestion = null;
         let audienceQuestion = null;
@@ -312,7 +312,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           });
           console.log('Participant question sent to participants');
         }
-        
+
         if (audienceQuestion) {
           this.server.to('role_AUDIENCE').emit('new_question', {
             participantQuestion: null,
@@ -326,12 +326,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           participantQuestion,
           audienceQuestion,
         });
-        
+
         // Start the timer for the first question (use participant question difficulty if available)
         const timerDifficulty = participantQuestion?.difficulty || 5; // Default to medium difficulty
         this.startQuestionTimer(timerDifficulty, data.targetRole);
       }
-      
+
       return { success: true, gameSession };
     } catch (error) {
       console.error('Error starting game:', error);
@@ -347,22 +347,22 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       console.log('Next question requested:', data);
-      
+
       // Get questions based on target role
       let participantQuestion = null;
       let audienceQuestion = null;
-      
+
       if (data.targetRole === 'BOTH' || data.targetRole === 'PARTICIPANT') {
         participantQuestion = await this.gameService.getNextQuestion(data.gameSessionId, data.gameMasterId, 'PARTICIPANT');
       }
-      
+
       if (data.targetRole === 'BOTH' || data.targetRole === 'AUDIENCE') {
         audienceQuestion = await this.gameService.getNextQuestion(data.gameSessionId, data.gameMasterId, 'AUDIENCE');
       }
-      
+
       console.log('Participant question retrieved:', participantQuestion);
       console.log('Audience question retrieved:', audienceQuestion);
-      
+
       // Send questions to appropriate roles
       if (participantQuestion) {
         this.server.to('role_PARTICIPANT').emit('new_question', {
@@ -371,7 +371,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         });
         console.log('Participant question sent to participants');
       }
-      
+
       if (audienceQuestion) {
         this.server.to('role_AUDIENCE').emit('new_question', {
           participantQuestion: null,
@@ -385,18 +385,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         participantQuestion,
         audienceQuestion,
       });
-      
+
       // Start the timer for the new question (use participant question difficulty if available)
       const timerDifficulty = participantQuestion?.difficulty || 5; // Default to medium difficulty
       this.startQuestionTimer(timerDifficulty, 'PARTICIPANT'); // Next question is always for participants
-      
+
       // Send acknowledgment back to the game master
-      client.emit('next_question_response', { 
-        success: true, 
-        participantQuestion, 
-        audienceQuestion 
+      client.emit('next_question_response', {
+        success: true,
+        participantQuestion,
+        audienceQuestion
       });
-      
+
       return { success: true, participantQuestion, audienceQuestion };
     } catch (error) {
       console.error('Error getting next question:', error);
@@ -493,7 +493,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           break;
         }
       }
-      
+
       if (!user || user.role !== 'GAME_MASTER') {
         client.emit('error', { message: 'Only game masters can reveal answers' });
         return { success: false, error: 'Unauthorized' };
@@ -517,31 +517,31 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Stop the timer when answers are revealed
       this.stopQuestionTimer();
-      
+
       // Update scores for correct answers NOW that the game master has revealed them
       // First correct answer gets 2 points, others get 1 point
       const correctAnswers = answers.filter(answer => answer.isCorrect);
-      
+
       // Sort by creation time to find first correct answers for each role
-      const sortedCorrectAnswers = correctAnswers.sort((a, b) => 
+      const sortedCorrectAnswers = correctAnswers.sort((a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
-      
+
       // Track first correct answer for each role
       const firstParticipantWinner = sortedCorrectAnswers.find(a => a.user?.role === 'PARTICIPANT');
       const firstAudienceWinner = sortedCorrectAnswers.find(a => a.user?.role === 'AUDIENCE');
-      
+
       // Update scores: first correct answer gets 2 points, others get 1 point
       for (const answer of correctAnswers) {
         let points = 1; // Default: 1 point for correct answer
-        
+
         // Check if this is the first correct answer for their role
         if (answer.user?.role === 'PARTICIPANT' && firstParticipantWinner && answer.id === firstParticipantWinner.id) {
           points = 2; // First participant gets 2 points
         } else if (answer.user?.role === 'AUDIENCE' && firstAudienceWinner && answer.id === firstAudienceWinner.id) {
           points = 2; // First audience gets 2 points
         }
-        
+
         await this.gameService.updateUserScore(answer.userId, points);
       }
 
@@ -566,14 +566,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const correctParticipantAnswers = answers
         .filter(answer => answer.isCorrect && answer.user?.role === 'PARTICIPANT')
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      
+
       const correctAudienceAnswers = answers
         .filter(answer => answer.isCorrect && answer.user?.role === 'AUDIENCE')
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      
+
       // Announce first participant winner
       if (correctParticipantAnswers.length > 0) {
         const firstParticipantWinner = correctParticipantAnswers[0];
+        // Get updated user data with new score
+        const participantWinnerUser = await this.gameService.getUserById(firstParticipantWinner.userId);
+
         this.server.emit('winner_announced', {
           userId: firstParticipantWinner.userId,
           username: firstParticipantWinner.user?.username,
@@ -581,12 +584,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           role: firstParticipantWinner.user?.role,
           responseTime: firstParticipantWinner.responseTime,
           questionId: data.questionId,
+          score: participantWinnerUser.score, // Include the winner's score
         });
       }
-      
+
       // Announce first audience winner
       if (correctAudienceAnswers.length > 0) {
         const firstAudienceWinner = correctAudienceAnswers[0];
+        // Get updated user data with new score
+        const audienceWinnerUser = await this.gameService.getUserById(firstAudienceWinner.userId);
+
         this.server.emit('winner_announced', {
           userId: firstAudienceWinner.userId,
           username: firstAudienceWinner.user?.username,
@@ -594,8 +601,78 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           role: firstAudienceWinner.user?.role,
           responseTime: firstAudienceWinner.responseTime,
           questionId: data.questionId,
+          score: audienceWinnerUser.score, // Include the winner's score
         });
       }
+
+      // Send comprehensive answer results to Game Master
+      // Get all connected users to determine who didn't answer
+      const allUsers = Array.from(this.connectedUsers.values())
+        .filter(u => u.role === 'PARTICIPANT' || u.role === 'AUDIENCE')
+        .map(u => u.userId);
+
+      const answeredUserIds = answers.map(a => a.userId);
+      const nonResponders = allUsers.filter(userId => !answeredUserIds.includes(userId));
+
+      // Get user details for non-responders
+      const nonResponderDetails = await Promise.all(
+        nonResponders.map(async (userId) => {
+          const user = await this.gameService.getUserById(userId);
+          return {
+            userId: user.id,
+            username: user.username,
+            uniqueNumber: user.uniqueNumber,
+            role: user.role,
+          };
+        })
+      );
+
+      // Categorize answers
+      const correctAnswersList = answers
+        .filter(a => a.isCorrect)
+        .map(a => ({
+          userId: a.userId,
+          username: a.user?.username,
+          uniqueNumber: a.user?.uniqueNumber,
+          role: a.user?.role,
+          selectedOption: a.selectedOption,
+          responseTime: a.responseTime,
+        }));
+
+      const incorrectAnswersList = answers
+        .filter(a => !a.isCorrect)
+        .map(a => ({
+          userId: a.userId,
+          username: a.user?.username,
+          uniqueNumber: a.user?.uniqueNumber,
+          role: a.user?.role,
+          selectedOption: a.selectedOption,
+          responseTime: a.responseTime,
+        }));
+
+      // Calculate statistics - count per option
+      const optionStats = {};
+      for (let i = 0; i < question.options.length; i++) {
+        optionStats[i] = answers.filter(a => a.selectedOption === i).length;
+      }
+
+      // Emit comprehensive results to Game Master only
+      this.server.to('role_GAME_MASTER').emit('answer_results', {
+        questionId: data.questionId,
+        correctAnswer: question.correctAnswer,
+        correctAnswers: correctAnswersList,
+        incorrectAnswers: incorrectAnswersList,
+        nonResponders: nonResponderDetails,
+        statistics: {
+          totalAnswered: answers.length,
+          totalCorrect: correctAnswersList.length,
+          totalIncorrect: incorrectAnswersList.length,
+          totalNonResponders: nonResponderDetails.length,
+          optionBreakdown: optionStats,
+        },
+      });
+
+
 
       return { success: true };
     } catch (error) {
@@ -627,7 +704,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       console.log('Sending specific question:', data);
-      
+
       // Get the question
       const question = await this.gameService.getQuestionById(data.questionId);
       if (!question) {
@@ -637,7 +714,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Get the game session to update it
       const gameSession = await this.gameService.getGameSession(data.gameSessionId);
-      
+
       // Update game session with current question to track it as sent
       // This ensures the question won't be selected again via "Next Question"
       await this.gameService.updateGameSessionQuestion(data.gameSessionId, data.questionId);
@@ -694,7 +771,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           break;
         }
       }
-      
+
       if (!user || user.role !== 'GAME_MASTER') {
         console.log('Clear scores unauthorized - user:', user);
         client.emit('error', { message: 'Only game masters can clear scores' });
@@ -704,10 +781,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       console.log('Clearing scores for game master:', user.userId);
       // Clear all scores using the game service
       const result = await this.gameService.clearAllScores(user.userId);
-      
+
       // Get user details for the broadcast
       const userDetails = await this.gameService.getUserById(user.userId);
-      
+
       // Broadcast to all connected users that scores have been cleared
       this.server.emit('scores_cleared', {
         message: result.message,

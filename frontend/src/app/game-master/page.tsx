@@ -29,7 +29,7 @@ export default function GameMasterPage() {
     setAudience,
     resetGame
   } = useGameStore();
-  
+
   const [socket, setSocket] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -46,6 +46,7 @@ export default function GameMasterPage() {
   const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
   const [showQuestionSelector, setShowQuestionSelector] = useState(false);
+  const [answerResults, setAnswerResults] = useState<any>(null);
 
   const clearNotifications = () => {
     setAnswerNotifications([]);
@@ -90,7 +91,7 @@ export default function GameMasterPage() {
       alert('Game session not active. Please start the game first.');
     }
   }, [targetRole]);
-  
+
   // Use refs to avoid dependency issues
   const socketRef = useRef<any>(null);
   const userRef = useRef(user);
@@ -144,7 +145,7 @@ export default function GameMasterPage() {
 
     if (currentSocket && currentUser?.id) {
       console.log('Starting game with gameMasterId:', currentUser.id, 'targetRole:', targetRole, 'episodeId:', selectedEpisode);
-      currentSocket.emit('start_game', { 
+      currentSocket.emit('start_game', {
         gameMasterId: currentUser.id,
         targetRole: targetRole,
         episodeId: selectedEpisode || undefined
@@ -186,7 +187,7 @@ export default function GameMasterPage() {
       const currentSocket = socketRef.current;
       const currentGameSession = gameSessionRef.current;
       const currentQuestionData = currentQuestionRef.current;
-      
+
       if (currentSocket && currentGameSession && currentQuestionData) {
         currentSocket.emit('reveal_answer', {
           questionId: currentQuestionData.id,
@@ -214,7 +215,7 @@ export default function GameMasterPage() {
     // Add a small delay to ensure backend is ready
     const connectSocket = () => {
       console.log('Attempting to connect to WebSocket...');
-      
+
       // Initialize socket connection
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
       const newSocket = io(wsUrl, {
@@ -229,7 +230,7 @@ export default function GameMasterPage() {
         upgrade: true,
         rememberUpgrade: false,
       });
-    
+
       setSocket(newSocket);
       socketRef.current = newSocket;
 
@@ -320,23 +321,23 @@ export default function GameMasterPage() {
         setIsLoadingQuestion(false);
       });
 
-             newSocket.on('user_list_updated', (data: any) => {
-               console.log('User list updated:', data);
-               console.log('Audience data with scores:', data.audience?.map((a: any) => ({ username: a.username, score: a.score, role: a.role })));
-               setParticipants(data.participants || []);
-               setAudience(data.audience || []);
-             });
+      newSocket.on('user_list_updated', (data: any) => {
+        console.log('User list updated:', data);
+        console.log('Audience data with scores:', data.audience?.map((a: any) => ({ username: a.username, score: a.score, role: a.role })));
+        setParticipants(data.participants || []);
+        setAudience(data.audience || []);
+      });
 
-             newSocket.on('game_session_updated', (session: any) => {
-               console.log('Game session updated:', session);
-               // Normalize status to lowercase for consistency
-               const normalizedSession = session ? {
-                 ...session,
-                 status: session.status?.toLowerCase() || session.status
-               } : session;
-               setGameSession(normalizedSession);
-               console.log('Updated game session status:', normalizedSession?.status);
-             });
+      newSocket.on('game_session_updated', (session: any) => {
+        console.log('Game session updated:', session);
+        // Normalize status to lowercase for consistency
+        const normalizedSession = session ? {
+          ...session,
+          status: session.status?.toLowerCase() || session.status
+        } : session;
+        setGameSession(normalizedSession);
+        console.log('Updated game session status:', normalizedSession?.status);
+      });
 
       newSocket.on('answer_result', (result: any) => {
         console.log('Answer result received in Game Master:', result);
@@ -347,7 +348,7 @@ export default function GameMasterPage() {
         console.log('Answer submitted notification:', notification);
         setAnswerNotifications(prev => [...prev, notification]);
         setShowNotifications(true);
-        
+
         // Auto-hide notification after 5 seconds
         setTimeout(() => {
           setShowNotifications(false);
@@ -358,7 +359,7 @@ export default function GameMasterPage() {
         console.log('Scores cleared:', data);
         // Show notification or update UI as needed
         alert(`Scores cleared! ${data.clearedCount} players reset to 0 points.`);
-             });
+      });
 
       newSocket.on('timer_started', (timerData: any) => {
         console.log('Timer started:', timerData);
@@ -376,6 +377,11 @@ export default function GameMasterPage() {
         console.log('Timer expired:', data);
         setTimerActive(false);
         setTimeLeft(0);
+      });
+
+      newSocket.on('answer_results', (results: any) => {
+        console.log('Answer results received:', results);
+        setAnswerResults(results);
       });
 
       return newSocket;
@@ -406,14 +412,14 @@ export default function GameMasterPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center space-x-3 md:space-x-6 flex-1 min-w-0">
             <div className="relative flex-shrink-0">
-          <img
-            src="/logo.png"
-            alt="Logo"
+              <img
+                src="/logo.png"
+                alt="Logo"
                 className="w-24 h-12 md:w-48 md:h-24 shadow-2xl"
-          />
+              />
               <div className="absolute -top-1 -right-1 w-4 h-4 md:w-6 md:h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
-          <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1">
               <h1 className="text-xl md:text-4xl font-bold text-white mb-1 md:mb-2 drop-shadow-lg truncate">
                 🎮 GAME MASTER CONTROL
               </h1>
@@ -437,22 +443,22 @@ export default function GameMasterPage() {
                 </button>
               </div>
             )}
-            
+
             <div className="flex items-center space-x-2 md:space-x-3 bg-black/30 px-2 md:px-4 py-1.5 md:py-2 rounded-full flex-shrink-0">
               <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
               <span className="text-white font-medium text-xs md:text-base whitespace-nowrap">
                 {isConnected ? 'LIVE' : 'OFFLINE'}
               </span>
-        </div>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout} 
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
               className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30 text-xs md:text-sm px-2 md:px-4 py-1.5 md:py-2 flex-shrink-0"
             >
               <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
               <span className="hidden sm:inline">Exit Studio</span>
               <span className="sm:hidden">Exit</span>
-          </Button>
+            </Button>
           </div>
         </div>
       </div>
@@ -508,11 +514,10 @@ export default function GameMasterPage() {
                     setSelectedEpisode(''); // Reset episode when changing role
                     fetchEpisodes('PARTICIPANT'); // Fetch only participant episodes
                   }}
-                  className={`p-3 rounded-lg text-sm font-medium transition-all ${
-                    targetRole === 'PARTICIPANT'
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                  }`}
+                  className={`p-3 rounded-lg text-sm font-medium transition-all ${targetRole === 'PARTICIPANT'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                    }`}
                 >
                   🎯 Participants
                 </button>
@@ -522,11 +527,10 @@ export default function GameMasterPage() {
                     setSelectedEpisode(''); // Reset episode when changing role
                     fetchEpisodes('AUDIENCE'); // Fetch only audience episodes
                   }}
-                  className={`p-3 rounded-lg text-sm font-medium transition-all ${
-                    targetRole === 'AUDIENCE'
-                      ? 'bg-teal-500 text-white shadow-lg'
-                      : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                  }`}
+                  className={`p-3 rounded-lg text-sm font-medium transition-all ${targetRole === 'AUDIENCE'
+                    ? 'bg-teal-500 text-white shadow-lg'
+                    : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                    }`}
                 >
                   👀 Audience
                 </button>
@@ -578,7 +582,7 @@ export default function GameMasterPage() {
                 </p>
               </div>
             )}
-            
+
             {!selectedEpisode && (
               <div className="space-y-3">
                 <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
@@ -588,7 +592,7 @@ export default function GameMasterPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Timer Display */}
             {timerActive && (
               <div className="mb-6 p-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg border-2 border-white/20">
@@ -606,7 +610,7 @@ export default function GameMasterPage() {
                     )}
                   </div>
                   <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-white transition-all duration-1000 ease-linear"
                       style={{ width: `${(timeLeft / timeLimit) * 100}%` }}
                     ></div>
@@ -683,13 +687,13 @@ export default function GameMasterPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="relative z-10">
-              {isLoadingQuestion ? (
+            {isLoadingQuestion ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-6"></div>
                 <p className="text-xl text-orange-300 font-medium">Loading question...</p>
-                </div>
-              ) : currentQuestion ? (
-                <div>
+              </div>
+            ) : currentQuestion ? (
+              <div>
                 <div className="bg-black/30 p-6 rounded-xl mb-6">
                   <p className="text-xl font-bold text-white leading-relaxed">
                     {currentQuestion.question || 'No question available'}
@@ -697,17 +701,15 @@ export default function GameMasterPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {currentQuestion.options && currentQuestion.options.map((option, index) => (
-                      <div 
-                        key={index}
-                      className={`p-4 rounded-xl border-2 transition-all duration-300 relative flex items-start ${
-                        index === (currentQuestion.correctAnswer || -1)
-                          ? 'border-green-400 bg-green-500/30 text-green-100 shadow-lg shadow-green-500/50' 
-                          : 'border-orange-400/50 bg-orange-500/10 text-orange-200'
-                      }`}
+                    <div
+                      key={index}
+                      className={`p-4 rounded-xl border-2 transition-all duration-300 relative flex items-start ${index === (currentQuestion.correctAnswer || -1)
+                        ? 'border-green-400 bg-green-500/30 text-green-100 shadow-lg shadow-green-500/50'
+                        : 'border-orange-400/50 bg-orange-500/10 text-orange-200'
+                        }`}
                     >
-                      <span className={`font-bold text-2xl mr-3 flex-shrink-0 ${
-                        index === (currentQuestion.correctAnswer || -1) ? 'text-green-300' : 'text-orange-400'
-                      }`}>
+                      <span className={`font-bold text-2xl mr-3 flex-shrink-0 ${index === (currentQuestion.correctAnswer || -1) ? 'text-green-300' : 'text-orange-400'
+                        }`}>
                         {String.fromCharCode(65 + index)}
                       </span>
                       <span className="text-lg font-medium break-words whitespace-normal flex-1">{option}</span>
@@ -716,18 +718,18 @@ export default function GameMasterPage() {
                           ✓ CORRECT
                         </span>
                       )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-gradient-to-r from-green-600 to-green-700 p-4 rounded-xl text-center shadow-lg">
-                    <p className="text-white font-bold text-lg">
-                      ✅ Correct Answer: {currentQuestion.correctAnswer !== undefined && currentQuestion.options 
-                        ? `${String.fromCharCode(65 + currentQuestion.correctAnswer)} - ${currentQuestion.options[currentQuestion.correctAnswer]}`
-                        : 'N/A'}
-                    </p>
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
+                <div className="bg-gradient-to-r from-green-600 to-green-700 p-4 rounded-xl text-center shadow-lg">
+                  <p className="text-white font-bold text-lg">
+                    ✅ Correct Answer: {currentQuestion.correctAnswer !== undefined && currentQuestion.options
+                      ? `${String.fromCharCode(65 + currentQuestion.correctAnswer)} - ${currentQuestion.options[currentQuestion.correctAnswer]}`
+                      : 'N/A'}
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🎮</div>
                 {gameSession?.status === 'active' ? (
@@ -760,9 +762,157 @@ export default function GameMasterPage() {
                   </>
                 )}
               </div>
-              )}
-            </CardContent>
+            )}
+          </CardContent>
         </Card>
+
+        {/* Answer Results Section */}
+        {answerResults && (
+          <Card className="col-span-1 lg:col-span-2 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300">
+            <CardHeader className="text-center bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
+              <CardTitle className="text-2xl font-bold">
+                📊 ANSWER RESULTS
+              </CardTitle>
+              <CardDescription className="text-purple-100">
+                Complete breakdown of responses
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Statistics Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white p-4 rounded-lg border-2 border-gray-200 text-center">
+                  <div className="text-3xl font-bold text-blue-600">{answerResults.statistics.totalAnswered}</div>
+                  <div className="text-sm text-gray-600">Total Answered</div>
+                </div>
+                <div className="bg-white p-4 rounded-lg border-2 border-green-300 text-center">
+                  <div className="text-3xl font-bold text-green-600">{answerResults.statistics.totalCorrect}</div>
+                  <div className="text-sm text-gray-600">✅ Correct</div>
+                </div>
+                <div className="bg-white p-4 rounded-lg border-2 border-red-300 text-center">
+                  <div className="text-3xl font-bold text-red-600">{answerResults.statistics.totalIncorrect}</div>
+                  <div className="text-sm text-gray-600">❌ Incorrect</div>
+                </div>
+                <div className="bg-white p-4 rounded-lg border-2 border-gray-300 text-center">
+                  <div className="text-3xl font-bold text-gray-600">{answerResults.statistics.totalNonResponders}</div>
+                  <div className="text-sm text-gray-600">⏸️ No Answer</div>
+                </div>
+              </div>
+
+              {/* Option Breakdown */}
+              <div className="bg-white p-4 rounded-lg border-2 border-purple-200 mb-6">
+                <h4 className="font-bold text-purple-800 mb-3">📈 Answer Distribution</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {Object.entries(answerResults.statistics.optionBreakdown).map(([option, count]: [string, any]) => (
+                    <div
+                      key={option}
+                      className={`p-3 rounded-lg text-center ${parseInt(option) === answerResults.correctAnswer
+                          ? 'bg-green-100 border-2 border-green-400'
+                          : 'bg-gray-100 border border-gray-300'
+                        }`}
+                    >
+                      <div className="text-xl font-bold">{String.fromCharCode(65 + parseInt(option))}</div>
+                      <div className={`text-2xl font-bold ${parseInt(option) === answerResults.correctAnswer ? 'text-green-600' : 'text-gray-700'
+                        }`}>
+                        {count}
+                      </div>
+                      {parseInt(option) === answerResults.correctAnswer && (
+                        <div className="text-xs text-green-600 font-bold">✓ CORRECT</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Correct Answers */}
+                <div className="bg-green-50 p-4 rounded-lg border-2 border-green-300">
+                  <h4 className="font-bold text-green-800 mb-3 flex items-center">
+                    <span className="text-2xl mr-2">✅</span>
+                    Correct ({answerResults.correctAnswers.length})
+                  </h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {answerResults.correctAnswers.length > 0 ? (
+                      answerResults.correctAnswers.map((answer: any, index: number) => (
+                        <div key={index} className="bg-white p-3 rounded-lg border border-green-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-gray-800">{answer.username}</p>
+                              <p className="text-sm text-gray-600">#{answer.uniqueNumber}</p>
+                              <p className="text-xs text-green-600">{answer.role}</p>
+                            </div>
+                            {answer.responseTime > 0 && (
+                              <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                ⏱️ {(answer.responseTime / 1000).toFixed(2)}s
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm text-center py-4">No correct answers</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Incorrect Answers */}
+                <div className="bg-red-50 p-4 rounded-lg border-2 border-red-300">
+                  <h4 className="font-bold text-red-800 mb-3 flex items-center">
+                    <span className="text-2xl mr-2">❌</span>
+                    Incorrect ({answerResults.incorrectAnswers.length})
+                  </h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {answerResults.incorrectAnswers.length > 0 ? (
+                      answerResults.incorrectAnswers.map((answer: any, index: number) => (
+                        <div key={index} className="bg-white p-3 rounded-lg border border-red-200">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-bold text-gray-800">{answer.username}</p>
+                              <p className="text-sm text-gray-600">#{answer.uniqueNumber}</p>
+                              <p className="text-xs text-red-600">{answer.role}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-bold text-red-600">
+                                {String.fromCharCode(65 + answer.selectedOption)}
+                              </div>
+                              {answer.responseTime > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  {(answer.responseTime / 1000).toFixed(2)}s
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm text-center py-4">No incorrect answers</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Non-Responders */}
+                <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-300">
+                  <h4 className="font-bold text-gray-800 mb-3 flex items-center">
+                    <span className="text-2xl mr-2">⏸️</span>
+                    Didn't Answer ({answerResults.nonResponders.length})
+                  </h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {answerResults.nonResponders.length > 0 ? (
+                      answerResults.nonResponders.map((user: any, index: number) => (
+                        <div key={index} className="bg-white p-3 rounded-lg border border-gray-200">
+                          <p className="font-bold text-gray-800">{user.username}</p>
+                          <p className="text-sm text-gray-600">#{user.uniqueNumber}</p>
+                          <p className="text-xs text-gray-500">{user.role}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm text-center py-4">Everyone answered!</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Participants & Audience */}
         <Card className="player-list">
@@ -935,7 +1085,7 @@ export default function GameMasterPage() {
         </Card>
 
         {/* Participant Leaderboard */}
-        <Leaderboard 
+        <Leaderboard
           participants={[...participants, ...audience]}
           role="PARTICIPANT"
           title="🎯 Participant Leaderboard"
@@ -944,7 +1094,7 @@ export default function GameMasterPage() {
         />
 
         {/* Audience Leaderboard */}
-        <Leaderboard 
+        <Leaderboard
           participants={[...participants, ...audience]}
           role="AUDIENCE"
           title="👥 Audience Leaderboard"
@@ -1007,18 +1157,16 @@ export default function GameMasterPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-bold text-gray-700">Q{index + 1}.</span>
                           <h4 className="font-semibold flex-1">{question.question}</h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            question.questionType === 'YES_NO' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-purple-100 text-purple-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${question.questionType === 'YES_NO'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                            }`}>
                             {question.questionType === 'YES_NO' ? 'Yes/No' : 'Multiple Choice'}
                           </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            question.targetRole === 'PARTICIPANT' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${question.targetRole === 'PARTICIPANT'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-orange-100 text-orange-800'
+                            }`}>
                             {question.targetRole === 'PARTICIPANT' ? '🎯 For Participants' : '👥 For Audience'}
                           </span>
                         </div>
@@ -1026,11 +1174,10 @@ export default function GameMasterPage() {
                           {question.options.map((option: string, idx: number) => (
                             <div
                               key={idx}
-                              className={`p-2 rounded text-sm ${
-                                idx === question.correctAnswer
-                                  ? 'bg-green-100 text-green-800 border border-green-300 font-medium'
-                                  : 'bg-gray-100 text-gray-700'
-                              }`}
+                              className={`p-2 rounded text-sm ${idx === question.correctAnswer
+                                ? 'bg-green-100 text-green-800 border border-green-300 font-medium'
+                                : 'bg-gray-100 text-gray-700'
+                                }`}
                             >
                               {String.fromCharCode(65 + idx)}. {option}
                               {idx === question.correctAnswer && ' ✓'}
@@ -1045,11 +1192,10 @@ export default function GameMasterPage() {
                     <div className="flex gap-2 pt-2 border-t">
                       <Button
                         onClick={() => sendSelectedQuestion(question.id)}
-                        className={`w-full font-bold ${
-                          targetRole === 'PARTICIPANT'
-                            ? 'bg-blue-500 hover:bg-blue-600'
-                            : 'bg-teal-500 hover:bg-teal-600'
-                        } text-white`}
+                        className={`w-full font-bold ${targetRole === 'PARTICIPANT'
+                          ? 'bg-blue-500 hover:bg-blue-600'
+                          : 'bg-teal-500 hover:bg-teal-600'
+                          } text-white`}
                         disabled={!question.isActive}
                       >
                         {targetRole === 'PARTICIPANT' ? '👥 Send to Participants' : '👀 Send to Audience'}

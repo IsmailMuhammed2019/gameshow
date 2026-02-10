@@ -53,6 +53,7 @@ export interface Winner {
   role: string;
   responseTime?: number;
   questionId?: string;
+  score?: number;
 }
 
 export interface GameState {

@@ -395,6 +395,7 @@ let GameGateway = class GameGateway {
                 .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
             if (correctParticipantAnswers.length > 0) {
                 const firstParticipantWinner = correctParticipantAnswers[0];
+                const participantWinnerUser = await this.gameService.getUserById(firstParticipantWinner.userId);
                 this.server.emit('winner_announced', {
                     userId: firstParticipantWinner.userId,
                     username: firstParticipantWinner.user?.username,
@@ -402,10 +403,12 @@ let GameGateway = class GameGateway {
                     role: firstParticipantWinner.user?.role,
                     responseTime: firstParticipantWinner.responseTime,
                     questionId: data.questionId,
+                    score: participantWinnerUser.score,
                 });
             }
             if (correctAudienceAnswers.length > 0) {
                 const firstAudienceWinner = correctAudienceAnswers[0];
+                const audienceWinnerUser = await this.gameService.getUserById(firstAudienceWinner.userId);
                 this.server.emit('winner_announced', {
                     userId: firstAudienceWinner.userId,
                     username: firstAudienceWinner.user?.username,
@@ -413,8 +416,61 @@ let GameGateway = class GameGateway {
                     role: firstAudienceWinner.user?.role,
                     responseTime: firstAudienceWinner.responseTime,
                     questionId: data.questionId,
+                    score: audienceWinnerUser.score,
                 });
             }
+            const allUsers = Array.from(this.connectedUsers.values())
+                .filter(u => u.role === 'PARTICIPANT' || u.role === 'AUDIENCE')
+                .map(u => u.userId);
+            const answeredUserIds = answers.map(a => a.userId);
+            const nonResponders = allUsers.filter(userId => !answeredUserIds.includes(userId));
+            const nonResponderDetails = await Promise.all(nonResponders.map(async (userId) => {
+                const user = await this.gameService.getUserById(userId);
+                return {
+                    userId: user.id,
+                    username: user.username,
+                    uniqueNumber: user.uniqueNumber,
+                    role: user.role,
+                };
+            }));
+            const correctAnswersList = answers
+                .filter(a => a.isCorrect)
+                .map(a => ({
+                userId: a.userId,
+                username: a.user?.username,
+                uniqueNumber: a.user?.uniqueNumber,
+                role: a.user?.role,
+                selectedOption: a.selectedOption,
+                responseTime: a.responseTime,
+            }));
+            const incorrectAnswersList = answers
+                .filter(a => !a.isCorrect)
+                .map(a => ({
+                userId: a.userId,
+                username: a.user?.username,
+                uniqueNumber: a.user?.uniqueNumber,
+                role: a.user?.role,
+                selectedOption: a.selectedOption,
+                responseTime: a.responseTime,
+            }));
+            const optionStats = {};
+            for (let i = 0; i < question.options.length; i++) {
+                optionStats[i] = answers.filter(a => a.selectedOption === i).length;
+            }
+            this.server.to('role_GAME_MASTER').emit('answer_results', {
+                questionId: data.questionId,
+                correctAnswer: question.correctAnswer,
+                correctAnswers: correctAnswersList,
+                incorrectAnswers: incorrectAnswersList,
+                nonResponders: nonResponderDetails,
+                statistics: {
+                    totalAnswered: answers.length,
+                    totalCorrect: correctAnswersList.length,
+                    totalIncorrect: incorrectAnswersList.length,
+                    totalNonResponders: nonResponderDetails.length,
+                    optionBreakdown: optionStats,
+                },
+            });
             return { success: true };
         }
         catch (error) {

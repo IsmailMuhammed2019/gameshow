@@ -33,6 +33,7 @@ export declare class GameService {
     }>;
     updateQuestion(questionId: string, updateData: {
         isActive?: boolean;
+        episodeId?: string | null;
     }): Promise<{
         id: string;
         isActive: boolean;

@@ -18,9 +18,9 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 export default function ParticipantPage() {
   const router = useRouter();
   const { user, logout, setUser, switchRole } = useAuthStore();
-  const { 
-    gameSession, 
-    currentQuestion, 
+  const {
+    gameSession,
+    currentQuestion,
     isAnswering,
     answerResult,
     winners,
@@ -34,7 +34,7 @@ export default function ParticipantPage() {
     setParticipants,
     setAudience,
   } = useGameStore();
-  
+
   const [socket, setSocket] = useState<any>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -161,7 +161,7 @@ export default function ParticipantPage() {
           selectedOption: userAnswer.selectedOption,
           submitted: true,
         });
-        
+
         // Don't update score here - wait for user_list_updated event
         // which will have the correct score from backend (2 points for first, 1 for others)
         // Just trigger animation if answer is correct
@@ -170,7 +170,7 @@ export default function ParticipantPage() {
           setScoreAnimation(true);
           setTimeout(() => setScoreAnimation(false), 1000);
         }
-        
+
         // Trigger celebration animation AFTER a delay to show the answer first
         setTimeout(() => {
           setShowCelebration(userAnswer.isCorrect);
@@ -202,7 +202,7 @@ export default function ParticipantPage() {
       // Update participants and audience lists
       setParticipants(data.participants || []);
       setAudience(data.audience || []);
-      
+
       // Update current user's score from the updated list
       if (user?.id) {
         const updatedUserData = [...(data.participants || []), ...(data.audience || [])].find(
@@ -211,13 +211,13 @@ export default function ParticipantPage() {
         if (updatedUserData && updatedUserData.score !== undefined) {
           const newScore = updatedUserData.score;
           const oldScore = prevScoreRef.current;
-          
+
           // Trigger animation if score increased
           if (newScore > oldScore) {
             setScoreAnimation(true);
             setTimeout(() => setScoreAnimation(false), 1000);
           }
-          
+
           setUser({
             ...user,
             score: newScore,
@@ -225,7 +225,7 @@ export default function ParticipantPage() {
           prevScoreRef.current = newScore;
         }
       }
-      
+
       console.log('Updated store - participants:', data.participants || []);
       console.log('Updated store - audience:', data.audience || []);
     });
@@ -304,7 +304,7 @@ export default function ParticipantPage() {
 
       // Switch role
       await switchRole('AUDIENCE');
-      
+
       // Redirect to audience page
       router.push('/audience');
     } catch (error: any) {
@@ -326,7 +326,7 @@ export default function ParticipantPage() {
 
   return (
     <div className="min-h-screen p-4 participant-screen">
-      <ConnectionStatus 
+      <ConnectionStatus
         isConnected={isConnected}
         isReconnecting={isReconnecting}
         onRetry={handleRetryConnection}
@@ -336,9 +336,9 @@ export default function ParticipantPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
           <div className="flex items-center space-x-2 md:space-x-6 flex-1 min-w-0">
             <div className="relative flex-shrink-0 hidden sm:block">
-              <img 
-                src="/logo.png" 
-                alt="Logo" 
+              <img
+                src="/logo.png"
+                alt="Logo"
                 className="w-24 h-12 md:w-48 md:h-24 shadow-2xl"
               />
               <div className="absolute -top-1 -right-1 w-4 h-4 md:w-6 md:h-6 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
@@ -359,9 +359,9 @@ export default function ParticipantPage() {
                 {isConnected ? 'LIVE' : 'OFFLINE'}
               </span>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={handleSwitchRole} 
+            <Button
+              variant="outline"
+              onClick={handleSwitchRole}
               className="bg-teal-600/20 border-teal-500 text-white hover:bg-teal-600/30 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
               title="Switch to Audience mode"
             >
@@ -369,9 +369,9 @@ export default function ParticipantPage() {
               <span className="hidden sm:inline">Switch to Audience</span>
               <span className="sm:hidden">Switch</span>
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout} 
+            <Button
+              variant="outline"
+              onClick={handleLogout}
               className="bg-red-600/20 border-red-500 text-white hover:bg-red-600/30 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
             >
               <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
@@ -396,9 +396,8 @@ export default function ParticipantPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center relative">
-              <div className={`text-6xl font-bold text-white mb-4 transition-all duration-500 ${
-                scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
-              }`}>
+              <div className={`text-6xl font-bold text-white mb-4 transition-all duration-500 ${scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
+                }`}>
                 {user.score || 0}
               </div>
               {scoreAnimation && (
@@ -475,17 +474,15 @@ export default function ParticipantPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                   <span className="text-gray-700 text-sm font-medium">Status:</span>
-                  <span className={`font-bold px-2 py-1 rounded-full text-xs ${
-                    gameSession?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
+                  <span className={`font-bold px-2 py-1 rounded-full text-xs ${gameSession?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
                     {gameSession?.status === 'active' ? '🟢 LIVE' : '⏸️ WAITING'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
                   <span className="text-gray-700 text-sm font-medium">Connection:</span>
-                  <span className={`font-bold px-2 py-1 rounded-full text-xs ${
-                    isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                  }`}>
+                  <span className={`font-bold px-2 py-1 rounded-full text-xs ${isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
                     {isConnected ? '🟢 CONNECTED' : '🔴 OFFLINE'}
                   </span>
                 </div>
@@ -506,7 +503,7 @@ export default function ParticipantPage() {
                   Question {gameSession.currentQuestionIndex} • Difficulty: {currentQuestion?.difficulty || 'N/A'}
                 </CardDescription>
               )}
-              
+
               {/* Timer Display */}
               {timerActive && (
                 <div className="mt-4 p-4 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg border-2 border-white/20">
@@ -524,7 +521,7 @@ export default function ParticipantPage() {
                       )}
                     </div>
                     <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-white transition-all duration-1000 ease-linear"
                         style={{ width: `${(timeLeft / timeLimit) * 100}%` }}
                       ></div>
@@ -545,7 +542,7 @@ export default function ParticipantPage() {
                     {currentQuestion.options && currentQuestion.options.map((option, index) => {
                       let buttonClass = 'answer-option';
                       let isDisabled = isAnswering || answerResult !== undefined;
-                      
+
                       if (answerResult) {
                         if (index === answerResult.selectedOption) {
                           buttonClass += answerResult.isCorrect ? ' correct' : ' incorrect';
@@ -558,9 +555,8 @@ export default function ParticipantPage() {
                         <Button
                           key={index}
                           variant="outline"
-                          className={`${buttonClass} min-h-20 text-left justify-start p-6 text-lg font-medium ${
-                            selectedOption === index ? 'ring-4 ring-orange-500 scale-105' : ''
-                          }`}
+                          className={`${buttonClass} min-h-20 text-left justify-start p-6 text-lg font-medium ${selectedOption === index ? 'ring-4 ring-orange-500 scale-105' : ''
+                            }`}
                           onClick={() => submitAnswer(index)}
                           disabled={isDisabled}
                         >
@@ -572,15 +568,14 @@ export default function ParticipantPage() {
                       );
                     })}
                   </div>
-                  
+
                   {answerResult && (
-                    <div className={`mt-6 p-6 rounded-lg text-center ${
-                      answerResult.submitted && answerResult.isCorrect !== undefined
-                        ? answerResult.isCorrect 
-                          ? 'bg-green-100 border-2 border-green-300' 
-                          : 'bg-red-100 border-2 border-red-300'
-                        : 'bg-blue-100 border-2 border-blue-300'
-                    }`}>
+                    <div className={`mt-6 p-6 rounded-lg text-center ${answerResult.submitted && answerResult.isCorrect !== undefined
+                      ? answerResult.isCorrect
+                        ? 'bg-green-100 border-2 border-green-300'
+                        : 'bg-red-100 border-2 border-red-300'
+                      : 'bg-blue-100 border-2 border-blue-300'
+                      }`}>
                       {answerResult.submitted && answerResult.isCorrect !== undefined ? (
                         <>
                           <div className="text-6xl mb-4">
@@ -648,14 +643,25 @@ export default function ParticipantPage() {
             console.log('Participants data:', participants);
             return null;
           })()}
-          <Leaderboard 
+          <Leaderboard
             participants={participants}
             role="PARTICIPANT"
             title="🎯 Participant Leaderboard"
             currentUserId={user.id}
-            showTop={10}
+            showTop={999}
           />
         </div>
+      </div>
+
+      {/* Mobile Leaderboard - Visible on mobile only, hidden on desktop */}
+      <div className="lg:hidden mt-4">
+        <Leaderboard
+          participants={participants}
+          role="PARTICIPANT"
+          title="🎯 Participant Leaderboard"
+          currentUserId={user.id}
+          showTop={999}
+        />
       </div>
 
       {/* Winner Modal */}
@@ -674,13 +680,16 @@ export default function ParticipantPage() {
                   <span className="text-orange-600 block">
                     #{winners[winners.length - 1].uniqueNumber}
                   </span>
+                  <span className="text-2xl font-bold text-orange-800 block mt-3">
+                    🏆 Score: {winners[winners.length - 1].score || 0}
+                  </span>
                 </span>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center mt-4">
-            <Button 
-              variant="orange" 
+            <Button
+              variant="orange"
               onClick={() => setShowWinnerModal(false)}
             >
               Continue
@@ -691,8 +700,8 @@ export default function ParticipantPage() {
 
       {/* Celebration Animation */}
       {showCelebration !== null && hasAnswered && (
-        <Celebration 
-          isCorrect={showCelebration} 
+        <Celebration
+          isCorrect={showCelebration}
           onComplete={() => setShowCelebration(null)}
         />
       )}

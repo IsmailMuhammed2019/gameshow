@@ -108,14 +108,14 @@ export default function GeneralAdminPage() {
         api.get('/episodes'),
         api.get('/users')
       ]);
-      
+
       console.log('Episodes fetched:', episodesResponse.data.length);
       console.log('Users fetched:', usersResponse.data.length);
       setParticipantQuestions(participantResponse.data);
       setAudienceQuestions(audienceResponse.data);
       setEpisodes(episodesResponse.data);
       setUsers(usersResponse.data);
-      
+
       // Also fetch all questions for backward compatibility
       const allResponse = await api.get('/game/questions');
       setQuestions(allResponse.data);
@@ -133,7 +133,7 @@ export default function GeneralAdminPage() {
         ...newQuestion,
         episodeId: activeTab === 'question-bank' ? undefined : (newQuestion.episodeId || undefined), // Only link to episode if not in question bank
       };
-      
+
       await api.post('/game/questions', questionData);
       setNewQuestion({
         question: '',
@@ -154,10 +154,10 @@ export default function GeneralAdminPage() {
 
   const handleCreateEpisode = async (roleOverride?: 'PARTICIPANT' | 'AUDIENCE') => {
     try {
-      const episodeData = roleOverride 
+      const episodeData = roleOverride
         ? { ...newEpisode, targetRole: roleOverride }
         : newEpisode;
-      
+
       await api.post('/episodes', episodeData);
       setNewEpisode({
         title: '',
@@ -267,7 +267,7 @@ export default function GeneralAdminPage() {
     }
 
     console.log(`[DELETE] Attempting to delete question with ID: ${questionId}`);
-    
+
     try {
       const response = await api.delete(`/game/questions/${questionId}`);
       console.log(`[DELETE] Successfully deleted question:`, response.data);
@@ -276,13 +276,13 @@ export default function GeneralAdminPage() {
       await fetchQuestions();
     } catch (error: any) {
       console.error('[DELETE] Error deleting question:', error);
-      
+
       let errorMessage = 'Failed to delete question';
-      
+
       if (error.response) {
         const status = error.response.status;
         const data = error.response.data;
-        
+
         if (status === 404) {
           errorMessage = data?.message || 'Question not found';
         } else if (status === 400) {
@@ -297,33 +297,46 @@ export default function GeneralAdminPage() {
       } else {
         errorMessage = error.message || 'An unexpected error occurred';
       }
-      
+
       alert(errorMessage);
     }
   };
 
   const handleLinkQuestionToEpisode = async (questionId: string, episodeId: string) => {
     try {
-      await api.patch(`/game/questions/${questionId}`, { episodeId });
+      // If episodeId is empty string, set to null to unlink
+      const episodeIdValue = episodeId === '' ? null : episodeId;
+      await api.patch(`/game/questions/${questionId}`, { episodeId: episodeIdValue });
       fetchQuestions();
-      alert('Question linked to episode successfully');
+
+      if (episodeIdValue === null) {
+        alert('Question unlinked from episode successfully');
+      } else {
+        alert('Question linked to episode successfully');
+      }
       setIsLinkQuestionOpen(false);
     } catch (error) {
       console.error('Error linking question:', error);
-      alert('Failed to link question to episode');
+      alert('Failed to update question episode link');
     }
   };
 
   const handleResetPassword = async (userId: string, newPassword: string) => {
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
     try {
       await api.patch(`/users/${userId}/reset-password`, { newPassword });
       alert('Password reset successfully');
       setIsResetPasswordOpen(false);
       setNewPassword('');
       setSelectedUserToReset(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resetting password:', error);
-      alert('Failed to reset password');
+      const errorMessage = error.response?.data?.message || 'Failed to reset password';
+      alert(`Error: ${errorMessage}`);
     }
   };
 
@@ -362,132 +375,132 @@ export default function GeneralAdminPage() {
         </div>
 
         {/* Question Creation Dialog (Opened from Episode Cards) */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create New Question</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Question</label>
-                  <Input
-                    value={newQuestion.question}
-                    onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
-                    placeholder="Enter question..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Options</label>
-                  {newQuestion.questionType === 'YES_NO' ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="w-8 text-sm font-medium">A:</span>
-                        <Input value="Yes" disabled className="bg-gray-100" />
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="w-8 text-sm font-medium">B:</span>
-                        <Input value="No" disabled className="bg-gray-100" />
-                      </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Question</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Question</label>
+                <Input
+                  value={newQuestion.question}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, question: e.target.value })}
+                  placeholder="Enter question..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Options</label>
+                {newQuestion.questionType === 'YES_NO' ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-8 text-sm font-medium">A:</span>
+                      <Input value="Yes" disabled className="bg-gray-100" />
                     </div>
-                  ) : (
-                    newQuestion.options.map((option, index) => (
-                      <Input
-                        key={index}
-                        value={option}
-                        onChange={(e) => {
-                          const newOptions = [...newQuestion.options];
-                          newOptions[index] = e.target.value;
-                          setNewQuestion({ ...newQuestion, options: newOptions });
-                        }}
-                        placeholder={`Option ${index + 1}`}
-                        className="mb-2"
-                      />
-                    ))
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Correct Answer {newQuestion.questionType === 'YES_NO' ? '(0=Yes, 1=No)' : '(0-3)'}
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max={newQuestion.questionType === 'YES_NO' ? '1' : '3'}
-                    value={newQuestion.correctAnswer}
-                    onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Difficulty (1-10)</label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={newQuestion.difficulty}
-                    onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Episode *</label>
-                  <select
-                    value={newQuestion.episodeId}
-                    onChange={(e) => {
-                      const episodeId = e.target.value;
-                      const selectedEp = episodes.find(ep => ep.id === episodeId);
-                      setNewQuestion({ 
-                        ...newQuestion, 
-                        episodeId: episodeId,
-                        targetRole: selectedEp?.targetRole || 'PARTICIPANT' // Inherit from episode
-                      });
-                    }}
-                    className="w-full p-2 border rounded"
-                    required
-                  >
-                    <option value="">-- Select an Episode --</option>
-                    {episodes.map((episode) => (
-                      <option key={episode.id} value={episode.id}>
-                        {episode.targetRole === 'PARTICIPANT' ? '🎯' : '👥'} {episode.title} ({episode.status})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Question will inherit the target role from the selected episode
+                    <div className="flex items-center space-x-2">
+                      <span className="w-8 text-sm font-medium">B:</span>
+                      <Input value="No" disabled className="bg-gray-100" />
+                    </div>
+                  </div>
+                ) : (
+                  newQuestion.options.map((option, index) => (
+                    <Input
+                      key={index}
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...newQuestion.options];
+                        newOptions[index] = e.target.value;
+                        setNewQuestion({ ...newQuestion, options: newOptions });
+                      }}
+                      placeholder={`Option ${index + 1}`}
+                      className="mb-2"
+                    />
+                  ))
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Correct Answer {newQuestion.questionType === 'YES_NO' ? '(0=Yes, 1=No)' : '(0-3)'}
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max={newQuestion.questionType === 'YES_NO' ? '1' : '3'}
+                  value={newQuestion.correctAnswer}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: parseInt(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Difficulty (1-10)</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={newQuestion.difficulty}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: parseInt(e.target.value) })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Episode *</label>
+                <select
+                  value={newQuestion.episodeId}
+                  onChange={(e) => {
+                    const episodeId = e.target.value;
+                    const selectedEp = episodes.find(ep => ep.id === episodeId);
+                    setNewQuestion({
+                      ...newQuestion,
+                      episodeId: episodeId,
+                      targetRole: selectedEp?.targetRole || 'PARTICIPANT' // Inherit from episode
+                    });
+                  }}
+                  className="w-full p-2 border rounded"
+                  required
+                >
+                  <option value="">-- Select an Episode --</option>
+                  {episodes.map((episode) => (
+                    <option key={episode.id} value={episode.id}>
+                      {episode.targetRole === 'PARTICIPANT' ? '🎯' : '👥'} {episode.title} ({episode.status})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Question will inherit the target role from the selected episode
+                </p>
+              </div>
+              {newQuestion.episodeId && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm text-blue-800">
+                    <strong>Target Role:</strong> {newQuestion.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                    <span className="text-xs text-blue-600 ml-2">(Inherited from episode)</span>
                   </p>
                 </div>
-                {newQuestion.episodeId && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-                    <p className="text-sm text-blue-800">
-                      <strong>Target Role:</strong> {newQuestion.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
-                      <span className="text-xs text-blue-600 ml-2">(Inherited from episode)</span>
-                    </p>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium mb-2">Question Type</label>
-                  <select
-                    value={newQuestion.questionType}
-                    onChange={(e) => {
-                      const questionType = e.target.value as 'MULTIPLE_CHOICE' | 'YES_NO';
-                      setNewQuestion({ 
-                        ...newQuestion, 
-                        questionType,
-                        // For YES_NO questions, set options to Yes/No and correctAnswer to 0 or 1
-                        options: questionType === 'YES_NO' ? ['Yes', 'No'] : ['', '', '', ''],
-                        correctAnswer: questionType === 'YES_NO' ? 0 : newQuestion.correctAnswer
-                      });
-                    }}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="MULTIPLE_CHOICE">Multiple Choice (A, B, C, D)</option>
-                    <option value="YES_NO">Yes/No Question</option>
-                  </select>
-                </div>
-                <Button onClick={handleCreateQuestion} className="w-full bg-teal-500 hover:bg-teal-600">
-                  Create Question
-                </Button>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-2">Question Type</label>
+                <select
+                  value={newQuestion.questionType}
+                  onChange={(e) => {
+                    const questionType = e.target.value as 'MULTIPLE_CHOICE' | 'YES_NO';
+                    setNewQuestion({
+                      ...newQuestion,
+                      questionType,
+                      // For YES_NO questions, set options to Yes/No and correctAnswer to 0 or 1
+                      options: questionType === 'YES_NO' ? ['Yes', 'No'] : ['', '', '', ''],
+                      correctAnswer: questionType === 'YES_NO' ? 0 : newQuestion.correctAnswer
+                    });
+                  }}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="MULTIPLE_CHOICE">Multiple Choice (A, B, C, D)</option>
+                  <option value="YES_NO">Yes/No Question</option>
+                </select>
               </div>
-            </DialogContent>
-          </Dialog>
+              <Button onClick={handleCreateQuestion} className="w-full bg-teal-500 hover:bg-teal-600">
+                Create Question
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Header Section */}
         <div className="mb-8">
@@ -511,56 +524,51 @@ export default function GeneralAdminPage() {
                 <div className="text-teal-600 font-medium">For spectators • Easier questions • Difficulty 1-5</div>
               </div>
             </div>
-        </div>
+          </div>
 
           <div className="flex space-x-3 bg-white rounded-lg p-2 mt-6 shadow-xl">
             <button
               onClick={() => setActiveTab('participant-episodes')}
-              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
-                activeTab === 'participant-episodes'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${activeTab === 'participant-episodes'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
               🎯 Participant Episodes ({episodes.filter(e => e.targetRole === 'PARTICIPANT').length})
             </button>
             <button
               onClick={() => setActiveTab('audience-episodes')}
-              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
-                activeTab === 'audience-episodes'
-                  ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${activeTab === 'audience-episodes'
+                ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-lg transform scale-105'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
               👥 Audience Episodes ({episodes.filter(e => e.targetRole === 'AUDIENCE').length})
             </button>
             <button
               onClick={() => setActiveTab('question-bank')}
-              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
-                activeTab === 'question-bank'
-                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${activeTab === 'question-bank'
+                ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg transform scale-105'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
               📚 Question Bank ({questions.length})
             </button>
             <button
               onClick={() => setActiveTab('user-management')}
-              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
-                activeTab === 'user-management'
-                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${activeTab === 'user-management'
+                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
               👥 User Management ({users.length})
             </button>
             <button
               onClick={() => setActiveTab('winners')}
-              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${
-                activeTab === 'winners'
-                  ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`flex-1 py-4 px-6 rounded-lg text-base font-bold transition-all ${activeTab === 'winners'
+                ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-lg transform scale-105'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
             >
               🏆 Winners & Leaders
             </button>
@@ -636,8 +644,8 @@ export default function GeneralAdminPage() {
                         <option value="ARCHIVED">Archived</option>
                       </select>
                     </div>
-                    <Button 
-                      onClick={() => handleCreateEpisode('PARTICIPANT')} 
+                    <Button
+                      onClick={() => handleCreateEpisode('PARTICIPANT')}
                       className="w-full bg-blue-500 hover:bg-blue-600"
                     >
                       Create Participant Episode
@@ -682,90 +690,88 @@ export default function GeneralAdminPage() {
             ) : (
               <div className="grid gap-6">
                 {episodes.filter(e => e.targetRole === 'PARTICIPANT').map((episode) => (
-                <Card key={episode.id} className="p-6 bg-white shadow-xl border-2 border-blue-200 hover:border-blue-400 transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-2xl font-bold text-gray-800">{episode.title}</h3>
-                        <div className="flex space-x-2">
-                          <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
-                            episode.targetRole === 'PARTICIPANT' 
-                              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                  <Card key={episode.id} className="p-6 bg-white shadow-xl border-2 border-blue-200 hover:border-blue-400 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-2xl font-bold text-gray-800">{episode.title}</h3>
+                          <div className="flex space-x-2">
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${episode.targetRole === 'PARTICIPANT'
+                              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
                               : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
-                          }`}>
-                            {episode.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
-                          </span>
-                          {episode.isForBothRoles && (
-                            <span className="px-3 py-2 rounded-full text-sm font-bold shadow-md bg-gradient-to-r from-green-500 to-green-600 text-white">
-                              🔄 Both Roles
+                              }`}>
+                              {episode.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
                             </span>
-                          )}
-                          <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
-                            episode.status === 'PUBLISHED' 
-                              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
+                            {episode.isForBothRoles && (
+                              <span className="px-3 py-2 rounded-full text-sm font-bold shadow-md bg-gradient-to-r from-green-500 to-green-600 text-white">
+                                🔄 Both Roles
+                              </span>
+                            )}
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${episode.status === 'PUBLISHED'
+                              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
                               : episode.status === 'DRAFT'
-                              ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white'
-                              : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
-                          }`}>
-                            {episode.status}
-                          </span>
+                                ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white'
+                                : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
+                              }`}>
+                              {episode.status}
+                            </span>
+                          </div>
+                        </div>
+                        {episode.description && (
+                          <p className="text-gray-700 mb-3 text-base">{episode.description}</p>
+                        )}
+                        <div className="flex gap-4 text-base text-gray-700 font-medium">
+                          <span className="bg-blue-50 px-3 py-1 rounded-full">📝 Questions: {episode._count.questions}</span>
+                          <span className="bg-gray-100 px-3 py-1 rounded-full">📅 {new Date(episode.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      {episode.description && (
-                        <p className="text-gray-700 mb-3 text-base">{episode.description}</p>
-                      )}
-                      <div className="flex gap-4 text-base text-gray-700 font-medium">
-                        <span className="bg-blue-50 px-3 py-1 rounded-full">📝 Questions: {episode._count.questions}</span>
-                        <span className="bg-gray-100 px-3 py-1 rounded-full">📅 {new Date(episode.createdAt).toLocaleDateString()}</span>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            setSelectedEpisode(episode);
+                            setNewQuestion({
+                              question: '',
+                              options: ['', '', '', ''],
+                              correctAnswer: 0,
+                              difficulty: 1,
+                              targetRole: episode.targetRole, // Inherit from episode
+                              questionType: 'MULTIPLE_CHOICE',
+                              episodeId: episode.id,
+                            });
+                            setIsDialogOpen(true);
+                          }}
+
+                          size="sm"
+                          className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold shadow-lg"
+                        >
+                          ➕ Add Question
+                        </Button>
+                        <Button
+                          onClick={() => handleViewEpisodeQuestions(episode)}
+                          size="sm"
+                          className="bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold shadow-md"
+                        >
+                          👁️ View ({episode._count.questions})
+                        </Button>
+                        <Button
+                          onClick={() => handleUpdateEpisodeStatus(episode.id, episode.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
+                          size="sm"
+                          className={episode.status === 'PUBLISHED'
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold shadow-lg'
+                            : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg'}
+                        >
+                          {episode.status === 'PUBLISHED' ? '📤 Unpublish' : '✅ Publish'}
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteEpisode(episode.id)}
+                          size="sm"
+                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-lg"
+                        >
+                          🗑️ Delete
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => {
-                          setSelectedEpisode(episode);
-                          setNewQuestion({
-                            question: '',
-                            options: ['', '', '', ''],
-                            correctAnswer: 0,
-                            difficulty: 1,
-                            targetRole: episode.targetRole, // Inherit from episode
-                            questionType: 'MULTIPLE_CHOICE',
-                            episodeId: episode.id,
-                          });
-                          setIsDialogOpen(true);
-                        }}
-
-                        size="sm"
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold shadow-lg"
-                      >
-                        ➕ Add Question
-                      </Button>
-                      <Button
-                        onClick={() => handleViewEpisodeQuestions(episode)}
-                        size="sm"
-                        className="bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold shadow-md"
-                      >
-                        👁️ View ({episode._count.questions})
-                      </Button>
-                      <Button
-                        onClick={() => handleUpdateEpisodeStatus(episode.id, episode.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
-                        size="sm"
-                        className={episode.status === 'PUBLISHED' 
-                          ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold shadow-lg' 
-                          : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg'}
-                      >
-                        {episode.status === 'PUBLISHED' ? '📤 Unpublish' : '✅ Publish'}
-                      </Button>
-                      <Button
-                        onClick={() => handleDeleteEpisode(episode.id)}
-                        size="sm"
-                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-lg"
-                      >
-                        🗑️ Delete
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
+                  </Card>
                 ))}
               </div>
             )}
@@ -841,8 +847,8 @@ export default function GeneralAdminPage() {
                         <option value="ARCHIVED">Archived</option>
                       </select>
                     </div>
-                    <Button 
-                      onClick={() => handleCreateEpisode('AUDIENCE')} 
+                    <Button
+                      onClick={() => handleCreateEpisode('AUDIENCE')}
                       className="w-full bg-teal-500 hover:bg-teal-600"
                     >
                       Create Audience Episode
@@ -885,90 +891,89 @@ export default function GeneralAdminPage() {
                 </div>
               </div>
             ) : (
-            <div className="grid gap-6">
+              <div className="grid gap-6">
                 {episodes.filter(e => e.targetRole === 'AUDIENCE').map((episode) => (
-                <Card key={episode.id} className="p-6 bg-white shadow-xl border-2 border-teal-200 hover:border-teal-400 transition-all">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-semibold">{episode.title}</h3>
-                        <div className="flex space-x-2">
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                            👥 Audience
-                          </span>
-                          {episode.isForBothRoles && (
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              🔄 Both Roles
+                  <Card key={episode.id} className="p-6 bg-white shadow-xl border-2 border-teal-200 hover:border-teal-400 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-lg font-semibold">{episode.title}</h3>
+                          <div className="flex space-x-2">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                              👥 Audience
                             </span>
-                          )}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            episode.status === 'PUBLISHED' 
-                              ? 'bg-green-100 text-green-800' 
+                            {episode.isForBothRoles && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                🔄 Both Roles
+                              </span>
+                            )}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${episode.status === 'PUBLISHED'
+                              ? 'bg-green-100 text-green-800'
                               : episode.status === 'DRAFT'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {episode.status}
-                          </span>
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                              }`}>
+                              {episode.status}
+                            </span>
+                          </div>
+                        </div>
+                        {episode.description && (
+                          <p className="text-gray-600 mb-2">{episode.description}</p>
+                        )}
+                        <div className="flex gap-4 text-sm text-gray-600">
+                          <span>Questions: {episode._count.questions}</span>
+                          <span>Created: {new Date(episode.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      {episode.description && (
-                        <p className="text-gray-600 mb-2">{episode.description}</p>
-                      )}
-                      <div className="flex gap-4 text-sm text-gray-600">
-                        <span>Questions: {episode._count.questions}</span>
-                        <span>Created: {new Date(episode.createdAt).toLocaleDateString()}</span>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            setSelectedEpisode(episode);
+                            setNewQuestion({
+                              question: '',
+                              options: ['', '', '', ''],
+                              correctAnswer: 0,
+                              difficulty: 1,
+                              targetRole: episode.targetRole,
+                              questionType: 'MULTIPLE_CHOICE',
+                              episodeId: episode.id,
+                            });
+                            setIsDialogOpen(true);
+                          }}
+
+                          size="sm"
+                          className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold shadow-lg"
+                        >
+                          ➕ Add Question
+                        </Button>
+                        <Button
+                          onClick={() => handleViewEpisodeQuestions(episode)}
+                          size="sm"
+                          className="bg-white border-2 border-teal-300 text-teal-700 hover:bg-teal-50 font-semibold shadow-md"
+                        >
+                          👁️ View ({episode._count.questions})
+                        </Button>
+                        <Button
+                          onClick={() => handleUpdateEpisodeStatus(episode.id, episode.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
+                          size="sm"
+                          className={episode.status === 'PUBLISHED'
+                            ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold shadow-lg'
+                            : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg'}
+                        >
+                          {episode.status === 'PUBLISHED' ? '📤 Unpublish' : '✅ Publish'}
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteEpisode(episode.id)}
+                          size="sm"
+                          className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-lg"
+                        >
+                          🗑️ Delete
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => {
-                          setSelectedEpisode(episode);
-                          setNewQuestion({
-                            question: '',
-                            options: ['', '', '', ''],
-                            correctAnswer: 0,
-                            difficulty: 1,
-                            targetRole: episode.targetRole,
-                            questionType: 'MULTIPLE_CHOICE',
-                            episodeId: episode.id,
-                          });
-                          setIsDialogOpen(true);
-                        }}
-
-                        size="sm"
-                        className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-bold shadow-lg"
-                      >
-                        ➕ Add Question
-                      </Button>
-                      <Button
-                        onClick={() => handleViewEpisodeQuestions(episode)}
-                        size="sm"
-                        className="bg-white border-2 border-teal-300 text-teal-700 hover:bg-teal-50 font-semibold shadow-md"
-                      >
-                        👁️ View ({episode._count.questions})
-                      </Button>
-                      <Button
-                        onClick={() => handleUpdateEpisodeStatus(episode.id, episode.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}
-                        size="sm"
-                        className={episode.status === 'PUBLISHED' 
-                          ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold shadow-lg' 
-                          : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold shadow-lg'}
-                      >
-                        {episode.status === 'PUBLISHED' ? '📤 Unpublish' : '✅ Publish'}
-                      </Button>
-                      <Button
-                        onClick={() => handleDeleteEpisode(episode.id)}
-                        size="sm"
-                        className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold shadow-lg"
-                      >
-                        🗑️ Delete
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                  </Card>
+                ))}
+              </div>
             )}
           </>
         )}
@@ -1064,8 +1069,8 @@ export default function GeneralAdminPage() {
                         value={newQuestion.questionType}
                         onChange={(e) => {
                           const questionType = e.target.value as 'MULTIPLE_CHOICE' | 'YES_NO';
-                          setNewQuestion({ 
-                            ...newQuestion, 
+                          setNewQuestion({
+                            ...newQuestion,
                             questionType,
                             options: questionType === 'YES_NO' ? ['Yes', 'No'] : ['', '', '', ''],
                             correctAnswer: questionType === 'YES_NO' ? 0 : newQuestion.correctAnswer
@@ -1112,90 +1117,104 @@ export default function GeneralAdminPage() {
               <div className="grid gap-6">
                 {questions.map((question, index) => (
                   <Card key={question.id} className="p-6 bg-white shadow-xl border-2 border-purple-200 hover:border-purple-400 transition-all">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-xl font-bold text-gray-800">Q{index + 1}. {question.question}</h3>
-                          <div className="flex space-x-2">
-                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
-                              question.targetRole === 'PARTICIPANT' 
-                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
-                                : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
-                            }`}>
-                              {question.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                    {/* Question Title Row */}
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-gray-800">Q{index + 1}. {question.question}</h3>
+                    </div>
+
+                    {/* Badges Row */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${question.targetRole === 'PARTICIPANT'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                        : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
+                        }`}>
+                        {question.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                      </span>
+                      <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${question.questionType === 'YES_NO'
+                        ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
+                        : 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                        }`}>
+                        {question.questionType === 'YES_NO' ? 'Yes/No' : 'Multiple Choice'}
+                      </span>
+                      <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${question.isActive
+                        ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                        : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                        }`}>
+                        {question.isActive ? '✅ Active' : '❌ Inactive'}
+                      </span>
+                      <span className="bg-purple-50 px-3 py-2 rounded-full text-sm font-medium text-purple-800">
+                        Difficulty: {question.difficulty}/10
+                      </span>
+                      {question.episodeId ? (
+                        (() => {
+                          const linkedEpisode = episodes.find((ep: any) => ep.id === question.episodeId);
+                          return linkedEpisode ? (
+                            <span className="bg-blue-50 px-3 py-2 rounded-full text-sm font-medium text-blue-700">
+                              📌 Linked to: {linkedEpisode.title}
                             </span>
-                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
-                              question.questionType === 'YES_NO' 
-                                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white' 
-                                : 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-                            }`}>
-                              {question.questionType === 'YES_NO' ? 'Yes/No' : 'Multiple Choice'}
+                          ) : (
+                            <span className="bg-gray-50 px-3 py-2 rounded-full text-sm font-medium text-gray-600">
+                              🔗 Linked to deleted episode
                             </span>
-                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
-                              question.isActive 
-                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
-                                : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-                            }`}>
-                              {question.isActive ? '✅ Active' : '❌ Inactive'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                          {question.options.map((option, idx) => (
-                            <div
-                              key={idx}
-                              className={`p-3 rounded text-sm ${
-                                idx === question.correctAnswer
-                                  ? 'bg-green-100 text-green-800 border border-green-300 font-medium'
-                                  : 'bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              {String.fromCharCode(65 + idx)}. {option}
-                              {idx === question.correctAnswer && ' ✓'}
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex gap-4 text-sm text-gray-600">
-                          <span className="bg-purple-50 px-3 py-1 rounded-full">Difficulty: {question.difficulty}/10</span>
-                          <span className="bg-gray-100 px-3 py-1 rounded-full">Created: {new Date(question.createdAt).toLocaleDateString()}</span>
-                          {question.episodeId && (
-                            <span className="bg-blue-50 px-3 py-1 rounded-full">Linked to Episode</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {!question.episodeId && (
-                          <Button
-                            onClick={() => {
-                              setSelectedQuestionToLink(question);
-                              setIsLinkQuestionOpen(true);
-                            }}
-                            variant="outline"
-                            size="sm"
-                            className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
-                          >
-                            Link to Episode
-                          </Button>
-                        )}
-                        <Button
-                          onClick={() => toggleQuestionStatus(question.id, question.isActive)}
-                          variant={question.isActive ? 'destructive' : 'default'}
-                          size="sm"
+                          );
+                        })()
+                      ) : (
+                        <span className="bg-gray-50 px-3 py-2 rounded-full text-sm font-medium text-gray-600">
+                          🔗 Not linked to any episode
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Answer Options Row */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {question.options.map((option, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-lg text-sm ${idx === question.correctAnswer
+                            ? 'bg-green-100 text-green-800 border-2 border-green-400 font-medium'
+                            : 'bg-gray-100 text-gray-700 border border-gray-300'
+                            }`}
                         >
-                          {question.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this question?')) {
-                              handleDeleteQuestion(question.id);
-                            }
-                          }}
-                          variant="destructive"
-                          size="sm"
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                          <span className="font-semibold">{String.fromCharCode(65 + idx)}.</span> {option}
+                          {idx === question.correctAnswer && ' ✓'}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Action Buttons Row */}
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
+                      <Button
+                        onClick={() => {
+                          setSelectedQuestionToLink(question);
+                          setIsLinkQuestionOpen(true);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
+                      >
+                        {question.episodeId ? '🔄 Change Episode' : '➕ Add to Episode'}
+                      </Button>
+                      <Button
+                        onClick={() => toggleQuestionStatus(question.id, question.isActive)}
+                        variant={question.isActive ? 'destructive' : 'default'}
+                        size="sm"
+                      >
+                        {question.isActive ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this question?')) {
+                            handleDeleteQuestion(question.id);
+                          }
+                        }}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        Delete
+                      </Button>
+                      <span className="ml-auto text-xs text-gray-500 self-center">
+                        Created: {new Date(question.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
                   </Card>
                 ))}
@@ -1233,24 +1252,22 @@ export default function GeneralAdminPage() {
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-xl font-bold text-gray-800">{user.username}</h3>
                           <div className="flex space-x-2">
-                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
-                              user.role === 'GENERAL_ADMIN' 
-                                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
-                                : user.role === 'GAME_MASTER'
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${user.role === 'GENERAL_ADMIN'
+                              ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                              : user.role === 'GAME_MASTER'
                                 ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white'
                                 : user.role === 'PARTICIPANT'
-                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
-                                : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
-                            }`}>
-                              {user.role === 'GENERAL_ADMIN' ? '🔑 Admin' : 
-                               user.role === 'GAME_MASTER' ? '🎮 Game Master' :
-                               user.role === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+                                  : 'bg-gradient-to-r from-teal-500 to-teal-600 text-white'
+                              }`}>
+                              {user.role === 'GENERAL_ADMIN' ? '🔑 Admin' :
+                                user.role === 'GAME_MASTER' ? '🎮 Game Master' :
+                                  user.role === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
                             </span>
-                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${
-                              user.isActive 
-                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' 
-                                : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-                            }`}>
+                            <span className={`px-3 py-2 rounded-full text-sm font-bold shadow-md ${user.isActive
+                              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
+                              : 'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                              }`}>
                               {user.isActive ? '✅ Active' : '❌ Inactive'}
                             </span>
                           </div>
@@ -1324,9 +1341,8 @@ export default function GeneralAdminPage() {
                         .map((user, index) => (
                           <div key={user.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-300 rounded-lg">
                             <div className="flex items-center space-x-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${
-                                index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-blue-500'
-                              }`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-blue-500'
+                                }`}>
                                 {index + 1}
                               </div>
                               <div>
@@ -1369,9 +1385,8 @@ export default function GeneralAdminPage() {
                         .map((user, index) => (
                           <div key={user.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-teal-50 to-teal-100 border border-teal-300 rounded-lg">
                             <div className="flex items-center space-x-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${
-                                index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-teal-500'
-                              }`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-white ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-teal-500'
+                                }`}>
                                 {index + 1}
                               </div>
                               <div>
@@ -1415,9 +1430,8 @@ export default function GeneralAdminPage() {
                       .map((user, index) => (
                         <div key={user.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg">
                           <div className="flex items-center space-x-4">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-lg ${
-                              index === 0 ? 'bg-yellow-500 shadow-lg' : index === 1 ? 'bg-gray-400 shadow-lg' : index === 2 ? 'bg-orange-500 shadow-lg' : 'bg-yellow-400'
-                            }`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-lg ${index === 0 ? 'bg-yellow-500 shadow-lg' : index === 1 ? 'bg-gray-400 shadow-lg' : index === 2 ? 'bg-orange-500 shadow-lg' : 'bg-yellow-400'
+                              }`}>
                               {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
                             </div>
                             <div>
@@ -1469,27 +1483,25 @@ export default function GeneralAdminPage() {
                   >
                     + Add First Question
                   </Button>
-            </div>
+                </div>
               ) : (
                 episodeQuestions.map((question, index) => (
                   <Card key={question.id} className="p-4">
                     <div className="flex justify-between items-start">
-                    <div className="flex-1">
+                      <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-bold text-gray-700">Q{index + 1}.</span>
                           <h4 className="font-semibold">{question.question}</h4>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            question.questionType === 'YES_NO' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-purple-100 text-purple-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${question.questionType === 'YES_NO'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                            }`}>
                             {question.questionType === 'YES_NO' ? 'Yes/No' : 'Multiple Choice'}
                           </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            question.targetRole === 'PARTICIPANT' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${question.targetRole === 'PARTICIPANT'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-orange-100 text-orange-800'
+                            }`}>
                             {question.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
                           </span>
                         </div>
@@ -1497,16 +1509,15 @@ export default function GeneralAdminPage() {
                           {question.options.map((option, idx) => (
                             <div
                               key={idx}
-                              className={`p-2 rounded text-sm ${
-                                idx === question.correctAnswer
-                                  ? 'bg-green-100 text-green-800 border border-green-300 font-medium'
-                                  : 'bg-gray-100 text-gray-700'
-                              }`}
+                              className={`p-2 rounded text-sm ${idx === question.correctAnswer
+                                ? 'bg-green-100 text-green-800 border border-green-300 font-medium'
+                                : 'bg-gray-100 text-gray-700'
+                                }`}
                             >
                               {String.fromCharCode(65 + idx)}. {option}
-                          </div>
-                        ))}
-                      </div>
+                            </div>
+                          ))}
+                        </div>
                         <div className="mt-2 text-xs text-gray-500">
                           Difficulty: {question.difficulty} | Status: {question.isActive ? '✅ Active' : '❌ Inactive'}
                         </div>
@@ -1531,8 +1542,8 @@ export default function GeneralAdminPage() {
                           Delete
                         </Button>
                       </div>
-                  </div>
-                </Card>
+                    </div>
+                  </Card>
                 ))
               )}
             </div>
@@ -1543,45 +1554,78 @@ export default function GeneralAdminPage() {
         <Dialog open={isLinkQuestionOpen} onOpenChange={setIsLinkQuestionOpen}>
           <DialogContent className="bg-white">
             <DialogHeader>
-              <DialogTitle>Link Question to Episode</DialogTitle>
+              <DialogTitle>
+                {selectedQuestionToLink?.episodeId ? 'Change Episode or Unlink Question' : 'Link Question to Episode'}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {selectedQuestionToLink && (
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-semibold mb-2">Question:</h4>
-                  <p className="text-gray-700">{selectedQuestionToLink.question}</p>
-                  <div className="mt-2 flex gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedQuestionToLink.targetRole === 'PARTICIPANT' 
-                        ? 'bg-blue-100 text-blue-800' 
+                <>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold mb-2">Question:</h4>
+                    <p className="text-gray-700">{selectedQuestionToLink.question}</p>
+                    <div className="mt-2 flex gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedQuestionToLink.targetRole === 'PARTICIPANT'
+                        ? 'bg-blue-100 text-blue-800'
                         : 'bg-teal-100 text-teal-800'
-                    }`}>
-                      {selectedQuestionToLink.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
-                    </span>
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      Difficulty: {selectedQuestionToLink.difficulty}/10
-                    </span>
+                        }`}>
+                        {selectedQuestionToLink.targetRole === 'PARTICIPANT' ? '🎯 Participant' : '👥 Audience'}
+                      </span>
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        Difficulty: {selectedQuestionToLink.difficulty}/10
+                      </span>
+                    </div>
+                    {selectedQuestionToLink.episodeId && (
+                      <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                        <p className="text-sm text-blue-800">
+                          <strong>Currently linked to:</strong>{' '}
+                          {episodes.find(ep => ep.id === selectedQuestionToLink.episodeId)?.title || 'Unknown Episode'}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Select Episode</label>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleLinkQuestionToEpisode(selectedQuestionToLink.id, e.target.value);
+                        }
+                      }}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="">-- Select an Episode --</option>
+                      {episodes
+                        .filter(ep => ep.targetRole === selectedQuestionToLink.targetRole || ep.isForBothRoles)
+                        .map((episode) => (
+                          <option key={episode.id} value={episode.id}>
+                            {episode.targetRole === 'PARTICIPANT' ? '🎯' : '👥'} {episode.title} ({episode.status})
+                            {episode.isForBothRoles && ' - Both Roles'}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Only showing episodes matching this question's target role ({selectedQuestionToLink.targetRole})
+                    </p>
+                  </div>
+                  {selectedQuestionToLink.episodeId && (
+                    <div className="pt-4 border-t">
+                      <Button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to unlink this question from its episode?')) {
+                            handleLinkQuestionToEpisode(selectedQuestionToLink.id, '');
+                          }
+                        }}
+                        variant="outline"
+                        className="w-full border-red-300 text-red-700 hover:bg-red-50"
+                      >
+                        🔓 Unlink from Episode
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
-              <div>
-                <label className="block text-sm font-medium mb-2">Select Episode</label>
-                <select
-                  onChange={(e) => {
-                    if (e.target.value && selectedQuestionToLink) {
-                      handleLinkQuestionToEpisode(selectedQuestionToLink.id, e.target.value);
-                    }
-                  }}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="">-- Select an Episode --</option>
-                  {episodes.map((episode) => (
-                    <option key={episode.id} value={episode.id}>
-                      {episode.targetRole === 'PARTICIPANT' ? '🎯' : '👥'} {episode.title} ({episode.status})
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
           </DialogContent>
         </Dialog>

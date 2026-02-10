@@ -52,7 +52,7 @@ export declare class UserController {
     }, "score"> & {
         score: number;
     }>>;
-    update(id: string, updateUserDto: UpdateUserDto): Promise<Omit<{
+    update(id: string, updateUserDto: UpdateUserDto, req: any): Promise<Omit<{
         id: string;
         username: string;
         email: string;

@@ -155,7 +155,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], GameController.prototype, "debugQuestions", null);
 __decorate([
-    (0, common_1.Patch)('questions/:id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),

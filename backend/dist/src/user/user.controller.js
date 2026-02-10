@@ -31,7 +31,10 @@ let UserController = class UserController {
     findOne(id) {
         return this.userService.findOne(id);
     }
-    update(id, updateUserDto) {
+    update(id, updateUserDto, req) {
+        if (updateUserDto.password && req.user.role !== 'GENERAL_ADMIN') {
+            throw new common_1.ForbiddenException('Only general admin can change passwords');
+        }
         return this.userService.update(id, updateUserDto);
     }
     remove(id) {
@@ -39,7 +42,7 @@ let UserController = class UserController {
     }
     resetPassword(id, body, req) {
         if (req.user.role !== 'GENERAL_ADMIN') {
-            throw new Error('Unauthorized: Only general admin can reset passwords');
+            throw new common_1.ForbiddenException('Only general admin can reset passwords');
         }
         return this.userService.resetPassword(id, body.newPassword);
     }
@@ -86,8 +89,9 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, update_user_dto_1.UpdateUserDto]),
+    __metadata("design:paramtypes", [String, update_user_dto_1.UpdateUserDto, Object]),
     __metadata("design:returntype", void 0)
 ], UserController.prototype, "update", null);
 __decorate([

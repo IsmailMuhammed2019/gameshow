@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, InternalServerErrorException, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { LoginDto } from './dto/login.dto';
@@ -12,11 +12,12 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
-  async validateUser(username: string, password: string): Promise<any> {
+  async validateUser(usernameOrEmail: string, password: string): Promise<any> {
     try {
-      const user = await this.userService.findByUsername(username);
+      // Allow login with either username or email
+      const user = await this.userService.findByEmailOrUsername(usernameOrEmail);
       if (user && await this.userService.validatePassword(password, user.password)) {
         const { password, ...result } = user;
         return {
@@ -78,11 +79,11 @@ export class AuthService {
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     try {
       const user = await this.userService.findByEmailOrUsername(forgotPasswordDto.emailOrUsername);
-      
+
       if (!user) {
         // Don't reveal if user exists or not for security
-        return { 
-          message: 'If an account with that email or username exists, a password reset token has been sent.' 
+        return {
+          message: 'If an account with that email or username exists, a password reset token has been sent.'
         };
       }
 
@@ -90,14 +91,13 @@ export class AuthService {
       const resetToken = crypto.randomBytes(32).toString('hex');
       const resetTokenExpiry = new Date();
       resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1); // Token expires in 1 hour
-
       // Save token to database
       await this.userService.setResetPasswordToken(user.id, resetToken, resetTokenExpiry);
 
       // In a real application, you would send an email here with the reset token
       // For now, we'll return the token (in production, remove this and send via email)
       console.log(`Password reset token for ${user.email}: ${resetToken}`);
-      
+
       return {
         message: 'If an account with that email or username exists, a password reset token has been sent.',
         // In development, return the token. Remove this in production!
@@ -113,7 +113,7 @@ export class AuthService {
     try {
       // Find user by reset token
       const user = await this.userService.findByResetToken(resetPasswordDto.token);
-      
+
       if (!user) {
         throw new BadRequestException('Invalid or expired reset token');
       }

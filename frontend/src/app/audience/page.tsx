@@ -16,9 +16,9 @@ import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 export default function AudiencePage() {
   const router = useRouter();
   const { user, logout, switchRole, setUser } = useAuthStore();
-  const { 
-    gameSession, 
-    currentQuestion, 
+  const {
+    gameSession,
+    currentQuestion,
     winners,
     participants,
     audience,
@@ -28,7 +28,7 @@ export default function AudiencePage() {
     setParticipants,
     setAudience,
   } = useGameStore();
-  
+
   const [socket, setSocket] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -188,7 +188,7 @@ export default function AudiencePage() {
           selectedOption: userAnswer.selectedOption,
           submitted: true,
         });
-        
+
         // Don't update score here - wait for user_list_updated event
         // which will have the correct score from backend (2 points for first, 1 for others)
         // Just trigger animation if answer is correct
@@ -213,22 +213,22 @@ export default function AudiencePage() {
       console.log('Full data received:', JSON.stringify(data, null, 2));
       console.log('Audience count:', data.audience?.length || 0);
       console.log('Participants count:', data.participants?.length || 0);
-      console.log('Audience data with scores:', data.audience?.map((a: any) => ({ 
-        username: a.username, 
-        score: a.score, 
+      console.log('Audience data with scores:', data.audience?.map((a: any) => ({
+        username: a.username,
+        score: a.score,
         scoreType: typeof a.score,
-        role: a.role 
+        role: a.role
       })));
-      console.log('Participants data with scores:', data.participants?.map((p: any) => ({ 
-        username: p.username, 
-        score: p.score, 
+      console.log('Participants data with scores:', data.participants?.map((p: any) => ({
+        username: p.username,
+        score: p.score,
         scoreType: typeof p.score,
-        role: p.role 
+        role: p.role
       })));
       // Update audience list
       setAudience(data.audience || []);
       setParticipants(data.participants || []);
-      
+
       // Update current user's score from the updated list
       if (user?.id) {
         const updatedUserData = [...(data.participants || []), ...(data.audience || [])].find(
@@ -237,13 +237,13 @@ export default function AudiencePage() {
         if (updatedUserData && updatedUserData.score !== undefined) {
           const newScore = updatedUserData.score;
           const oldScore = prevScoreRef.current;
-          
+
           // Trigger animation if score increased
           if (newScore > oldScore) {
             setScoreAnimation(true);
             setTimeout(() => setScoreAnimation(false), 1000);
           }
-          
+
           setUser({
             ...user,
             score: newScore,
@@ -251,7 +251,7 @@ export default function AudiencePage() {
           prevScoreRef.current = newScore;
         }
       }
-      
+
       console.log('Updated store - audience:', data.audience || []);
       console.log('===============================================');
     });
@@ -299,7 +299,7 @@ export default function AudiencePage() {
 
       // Switch role
       await switchRole('PARTICIPANT');
-      
+
       // Redirect to participant page
       router.push('/participant');
     } catch (error: any) {
@@ -321,7 +321,7 @@ export default function AudiencePage() {
 
   return (
     <div className="min-h-screen p-4 audience-screen">
-      <ConnectionStatus 
+      <ConnectionStatus
         isConnected={isConnected}
         isReconnecting={isReconnecting}
         onRetry={handleRetryConnection}
@@ -329,9 +329,9 @@ export default function AudiencePage() {
       {/* Header - Compact on Mobile */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 md:mb-6 gap-2 md:gap-4">
         <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
-          <img 
-            src="/logo.png" 
-            alt="Logo" 
+          <img
+            src="/logo.png"
+            alt="Logo"
             className="w-20 h-10 md:w-48 md:h-24 flex-shrink-0 hidden sm:block"
           />
           <div className="min-w-0 flex-1">
@@ -349,9 +349,9 @@ export default function AudiencePage() {
               {isConnected ? 'Connected' : 'Disconnected'}
             </span>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={handleSwitchRole} 
+          <Button
+            variant="outline"
+            onClick={handleSwitchRole}
             className="bg-orange-600/20 border-orange-500 text-white hover:bg-orange-600/30 hover:text-white hover:border-orange-400 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
             title="Switch to Participant mode"
           >
@@ -359,16 +359,16 @@ export default function AudiencePage() {
             <span className="font-medium hidden sm:inline">Switch to Participant</span>
             <span className="font-medium sm:hidden">Switch</span>
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleLogout} 
+          <Button
+            variant="outline"
+            onClick={handleLogout}
             className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white hover:border-white/40 transition-all duration-200 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 flex-shrink-0"
           >
             <LogOut className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
             <span className="font-medium hidden sm:inline">Logout</span>
             <span className="font-medium sm:hidden">Exit</span>
           </Button>
-        </div> 
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
@@ -385,9 +385,8 @@ export default function AudiencePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center relative">
-              <div className={`text-6xl font-bold text-white mb-4 transition-all duration-500 ${
-                scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
-              }`}>
+              <div className={`text-6xl font-bold text-white mb-4 transition-all duration-500 ${scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
+                }`}>
                 {user.score || 0}
               </div>
               {scoreAnimation && (
@@ -476,9 +475,8 @@ export default function AudiencePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-white/80 text-xs mb-1">Your Score</p>
-                  <p className={`text-3xl font-bold text-white transition-all duration-500 ${
-                    scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
-                  }`}>
+                  <p className={`text-3xl font-bold text-white transition-all duration-500 ${scoreAnimation ? 'scale-125 text-yellow-300 animate-pulse' : ''
+                    }`}>
                     {user.score || 0}
                   </p>
                 </div>
@@ -489,7 +487,7 @@ export default function AudiencePage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="question-display">
             <CardHeader className="text-center">
               <CardTitle className="text-xl md:text-2xl font-bold text-white mb-2">
@@ -500,7 +498,7 @@ export default function AudiencePage() {
                   Question {gameSession.currentQuestionIndex} • Difficulty: {currentQuestion?.difficulty || 'N/A'}
                 </CardDescription>
               )}
-              
+
               {/* Timer Display */}
               {timerActive && (
                 <div className="mt-4 p-4 bg-gradient-to-r from-red-500 to-orange-500 rounded-lg border-2 border-white/20">
@@ -518,7 +516,7 @@ export default function AudiencePage() {
                       )}
                     </div>
                     <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-white transition-all duration-1000 ease-linear"
                         style={{ width: `${(timeLeft / timeLimit) * 100}%` }}
                       ></div>
@@ -540,21 +538,20 @@ export default function AudiencePage() {
                       const isRevealed = answerResult?.isCorrect !== undefined;
                       const isCorrect = isRevealed && answerResult?.correctAnswer === index;
                       const isIncorrect = isRevealed && answerResult?.selectedOption === index && !answerResult?.isCorrect;
-                      
+
                       return (
                         <button
                           key={index}
                           onClick={() => submitAnswer(index)}
                           disabled={isAnswering || hasAnswered}
-                          className={`option-button p-6 rounded-2xl text-left text-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-start ${
-                            isRevealed && isCorrect
-                              ? 'border-4 border-green-400 bg-green-100 text-green-800 shadow-green-glow'
-                              : isRevealed && isIncorrect
+                          className={`option-button p-6 rounded-2xl text-left text-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-start ${isRevealed && isCorrect
+                            ? 'border-4 border-green-400 bg-green-100 text-green-800 shadow-green-glow'
+                            : isRevealed && isIncorrect
                               ? 'border-4 border-red-400 bg-red-100 text-red-800'
                               : isSelected && !isRevealed
-                              ? 'border-4 border-teal-400 bg-teal-100 text-teal-800'
-                              : 'border-4 border-white/30 bg-white/10 text-white hover:border-teal-400 hover:bg-white/20'
-                          } ${(isAnswering || hasAnswered) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+                                ? 'border-4 border-teal-400 bg-teal-100 text-teal-800'
+                                : 'border-4 border-white/30 bg-white/10 text-white hover:border-teal-400 hover:bg-white/20'
+                            } ${(isAnswering || hasAnswered) ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
                         >
                           <span className="inline-block w-10 h-10 bg-teal-400 text-white rounded-full flex items-center justify-center mr-3 font-bold text-xl flex-shrink-0">
                             {String.fromCharCode(65 + index)}
@@ -566,15 +563,14 @@ export default function AudiencePage() {
                       );
                     })}
                   </div>
-                  
+
                   {answerResult && (
-                    <div className={`mt-6 p-6 rounded-lg text-center ${
-                      answerResult.isCorrect !== undefined
-                        ? answerResult.isCorrect
-                          ? 'bg-green-100 border-2 border-green-300'
-                          : 'bg-red-100 border-2 border-red-300'
-                        : 'bg-blue-100 border-2 border-blue-300'
-                    }`}>
+                    <div className={`mt-6 p-6 rounded-lg text-center ${answerResult.isCorrect !== undefined
+                      ? answerResult.isCorrect
+                        ? 'bg-green-100 border-2 border-green-300'
+                        : 'bg-red-100 border-2 border-red-300'
+                      : 'bg-blue-100 border-2 border-blue-300'
+                      }`}>
                       {answerResult.isCorrect !== undefined ? (
                         <>
                           <div className="text-6xl mb-4">
@@ -627,23 +623,34 @@ export default function AudiencePage() {
             console.log('========== AUDIENCE LEADERBOARD DATA ==========');
             console.log('Audience count:', audience.length);
             console.log('Full audience data:', JSON.stringify(audience, null, 2));
-            console.log('Audience scores:', audience.map(a => ({ 
-              username: a.username, 
+            console.log('Audience scores:', audience.map(a => ({
+              username: a.username,
               score: a.score,
               scoreType: typeof a.score,
-              role: a.role 
+              role: a.role
             })));
             console.log('===========================================');
             return null;
           })()}
-          <Leaderboard 
+          <Leaderboard
             participants={audience}
             role="AUDIENCE"
             title="👥 Audience Leaderboard"
             currentUserId={user.id}
-            showTop={10}
+            showTop={999}
           />
         </div>
+      </div>
+
+      {/* Mobile Leaderboard - Visible on mobile only, hidden on desktop */}
+      <div className="lg:hidden mt-4">
+        <Leaderboard
+          participants={audience}
+          role="AUDIENCE"
+          title="👥 Audience Leaderboard"
+          currentUserId={user.id}
+          showTop={999}
+        />
       </div>
 
       {/* Winner Modal */}
@@ -657,12 +664,12 @@ export default function AudiencePage() {
               {(() => {
                 // Get the most recent audience winner
                 const audienceWinnersList = winners.filter(w => w.role === 'AUDIENCE');
-                const latestWinner = audienceWinnersList.length > 0 
+                const latestWinner = audienceWinnersList.length > 0
                   ? audienceWinnersList[audienceWinnersList.length - 1]
-                  : audienceWinners.length > 0 
+                  : audienceWinners.length > 0
                     ? audienceWinners[audienceWinners.length - 1]
                     : null;
-                
+
                 if (latestWinner) {
                   return (
                     <span className="mt-4 block">
@@ -677,6 +684,9 @@ export default function AudiencePage() {
                           ⏱️ {(latestWinner.responseTime / 1000).toFixed(2)}s
                         </span>
                       )}
+                      <span className="text-2xl font-bold text-orange-800 block mt-3">
+                        🏆 Score: {latestWinner.score || 0}
+                      </span>
                     </span>
                   );
                 }
@@ -689,8 +699,8 @@ export default function AudiencePage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center mt-4">
-            <Button 
-              variant="orange" 
+            <Button
+              variant="orange"
               onClick={() => setShowWinnerModal(false)}
             >
               Continue

@@ -14,7 +14,7 @@ type GameSessionWithNumberScore = Omit<GameSession, 'gameMaster'> & {
 
 @Injectable()
 export class GameService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async createQuestion(createQuestionDto: CreateQuestionDto): Promise<Question> {
     return this.prisma.question.create({
@@ -28,11 +28,11 @@ export class GameService {
 
   async getActiveQuestions(targetRole?: string): Promise<Question[]> {
     const whereClause: any = { isActive: true };
-    
+
     if (targetRole) {
       whereClause.targetRole = targetRole;
     }
-    
+
     console.log('Getting active questions with whereClause:', whereClause);
     const questions = await this.prisma.question.findMany({ where: whereClause });
     console.log(`Found ${questions.length} questions for role: ${targetRole || 'ALL'}`);
@@ -51,15 +51,15 @@ export class GameService {
         where: { id: episodeId },
         include: { questions: { where: { isActive: true } } }
       });
-      
+
       if (!episode) {
         throw new NotFoundException('Episode not found');
       }
-      
+
       if (episode.status !== 'PUBLISHED') {
         throw new BadRequestException('Episode is not published');
       }
-      
+
       if (episode.questions.length === 0) {
         throw new BadRequestException('Episode has no questions');
       }
@@ -77,7 +77,7 @@ export class GameService {
 
   async getNextQuestion(gameSessionId: string, gameMasterId: string, targetRole?: string): Promise<Question> {
     console.log(`getNextQuestion called with: gameSessionId=${gameSessionId}, gameMasterId=${gameMasterId}, targetRole=${targetRole}`);
-    
+
     // First try to find with gameMasterId
     let gameSession = await this.prisma.gameSession.findFirst({
       where: { id: gameSessionId, gameMasterId },
@@ -115,17 +115,17 @@ export class GameService {
       distinct: ['questionId'],
     });
     const sentQuestionIds = new Set<string>();
-    
+
     // Add all questions that appear in answer records (these were definitely sent)
     // This includes both real answers AND "sent" markers (selectedOption = -1)
     allAnswersInSession.forEach(answer => sentQuestionIds.add(answer.questionId));
-    
+
     // Also add current question if it exists (it was sent and is currently displayed)
     // This catches the question that was just sent but marker hasn't been created yet
     if (gameSession.currentQuestionId) {
       sentQuestionIds.add(gameSession.currentQuestionId);
     }
-    
+
     const allSentQuestionIds = Array.from(sentQuestionIds);
     console.log(`Total sent question IDs in this session: ${allSentQuestionIds.length}`, allSentQuestionIds);
 
@@ -142,11 +142,11 @@ export class GameService {
           notIn: allSentQuestionIds.length > 0 ? allSentQuestionIds : [],
         },
       };
-      
+
       if (targetRole) {
         whereClause.targetRole = targetRole;
       }
-      
+
       questions = await this.prisma.question.findMany({ where: whereClause });
     } else {
       // Fallback to all active questions, excluding sent ones
@@ -156,16 +156,16 @@ export class GameService {
           notIn: allSentQuestionIds.length > 0 ? allSentQuestionIds : [],
         },
       };
-      
+
       if (targetRole) {
         whereClause.targetRole = targetRole;
       }
-      
+
       questions = await this.prisma.question.findMany({ where: whereClause });
     }
 
     console.log(`Found ${questions.length} unsent questions for role: ${targetRole || 'PARTICIPANT'}`);
-    
+
     if (questions.length === 0) {
       console.log(`No unsent questions available for role: ${targetRole || 'PARTICIPANT'}`);
       throw new BadRequestException(`No unsent questions available for role: ${targetRole || 'PARTICIPANT'}. All questions have been sent in this session.`);
@@ -173,7 +173,7 @@ export class GameService {
 
     const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
     console.log('Selected random question:', randomQuestion.id, randomQuestion.question);
-    
+
     // Update game session with current question AND create a sent marker
     // This ensures the question is tracked as sent even if no one answers
     await this.updateGameSessionQuestion(gameSessionId, randomQuestion.id);
@@ -439,12 +439,12 @@ export class GameService {
     };
   }
 
-  async updateQuestion(questionId: string, updateData: { isActive?: boolean }) {
+  async updateQuestion(questionId: string, updateData: { isActive?: boolean; episodeId?: string | null }) {
     // Validate that the question ID is provided and not empty
     if (!questionId || questionId.trim() === '') {
       throw new BadRequestException('Question ID is required');
     }
-    
+
     try {
       return await this.prisma.question.update({
         where: { id: questionId },

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -6,7 +6,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
@@ -27,7 +27,10 @@ export class UserController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Request() req) {
+    if (updateUserDto.password && req.user.role !== 'GENERAL_ADMIN') {
+      throw new ForbiddenException('Only general admin can change passwords');
+    }
     return this.userService.update(id, updateUserDto);
   }
 
@@ -42,7 +45,7 @@ export class UserController {
   resetPassword(@Param('id') id: string, @Body() body: { newPassword: string }, @Request() req) {
     // Only general admin can reset passwords
     if (req.user.role !== 'GENERAL_ADMIN') {
-      throw new Error('Unauthorized: Only general admin can reset passwords');
+      throw new ForbiddenException('Only general admin can reset passwords');
     }
     return this.userService.resetPassword(id, body.newPassword);
   }
@@ -53,19 +56,19 @@ export class UserController {
     // Only allow PARTICIPANT and AUDIENCE to switch roles
     const currentRole = req.user.role;
     const allowedRoles = ['PARTICIPANT', 'AUDIENCE'];
-    
+
     if (!allowedRoles.includes(currentRole)) {
       throw new Error('Unauthorized: Only participants and audience members can switch roles');
     }
-    
+
     if (!allowedRoles.includes(body.newRole)) {
       throw new Error('Invalid role: Can only switch between PARTICIPANT and AUDIENCE');
     }
-    
+
     if (currentRole === body.newRole) {
       throw new Error('You are already in this role');
     }
-    
+
     return this.userService.update(req.user.userId, { role: body.newRole as any });
   }
 }
